@@ -4,7 +4,7 @@ import Foundation
 /// `SMAppService` owns that state.
 public struct RevzenSettings: Codable, Sendable, Equatable {
     public static let hoverDelayRange: ClosedRange<Int> = 0...2000
-    public static let defaultHoverDelayMs = 300
+    public static let defaultHoverDelayMs = 100
 
     /// Delay between hovering a Dock icon and showing the preview.
     public var hoverDelayMs: Int {
