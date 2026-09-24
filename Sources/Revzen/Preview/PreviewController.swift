@@ -55,6 +55,7 @@ final class PreviewController {
     func dockMenuOpened() {
         hoverState.menuOpened()
         hide(reason: "the Dock menu opened")
+        updateTracking()
     }
 
     private func hoverChanged(_ item: DockItem?) {
@@ -175,6 +176,11 @@ final class PreviewController {
     /// `point` is in top-left global coordinates, as the event tap reports it.
     private func pointerMoved(to point: CGPoint) {
         guard let anchor else {
+            if let menuIcon = hoverState.suppressed, !Self.hitArea(menuIcon.frame).contains(point) {
+                DebugLog.event(.pointer, "left \(menuIcon.logName) after its menu at \(point.logText)")
+                hoverState.pointerLeftSuppressed()
+                updateTracking()
+            }
             // The Dock posts nothing for a return from the gap below or
             // beside the icon, so the pointer position decides.
             if let item = hoverState.pointerReturned(), Self.hitArea(item.frame).contains(point) {
@@ -203,10 +209,11 @@ final class PreviewController {
         panel.orderOut(nil)
     }
 
-    /// Pointer moves matter while a preview is pending or shown, and while
-    /// the pointer is inside the Dock and may return to the hovered icon.
+    /// Pointer moves matter while a preview is pending or shown, while the
+    /// pointer is inside the Dock and may return to the hovered icon, and
+    /// until the pointer leaves an icon whose menu opened.
     private func updateTracking() {
-        pointer.setActive(anchor != nil || hoverState.hovered != nil)
+        pointer.setActive(anchor != nil || hoverState.hovered != nil || hoverState.suppressed != nil)
     }
 
     private static func hitArea(_ rect: CGRect) -> CGRect {

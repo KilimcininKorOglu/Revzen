@@ -35,6 +35,30 @@ struct HoverStateTests {
         #expect(state.dockNotified("TextEdit", pointerInside: true) == "TextEdit")
     }
 
+    @Test("The cleared selection of an opening menu keeps the icon suppressed when the menu closes")
+    func menuSelectionClearKeepsSuppression() {
+        var state = HoverState<String>()
+        _ = state.dockNotified("TextEdit", pointerInside: true)
+        state.menuOpened()
+        // The Dock clears its selection as the menu opens, then selects the
+        // icon again under the pointer when the menu closes.
+        #expect(state.dockNotified(nil, pointerInside: false) == nil)
+        #expect(state.dockNotified("TextEdit", pointerInside: true) == nil)
+        #expect(state.pointerReturned() == nil)
+    }
+
+    @Test("Leaving the menu icon ends the suppression, so a return previews it")
+    func leavingMenuIconEndsSuppression() {
+        var state = HoverState<String>()
+        _ = state.dockNotified("TextEdit", pointerInside: true)
+        state.menuOpened()
+        _ = state.dockNotified(nil, pointerInside: false)
+        _ = state.dockNotified("TextEdit", pointerInside: true)
+        state.pointerLeftSuppressed()
+        #expect(state.suppressed == nil)
+        #expect(state.pointerReturned() == "TextEdit")
+    }
+
     @Test("Leaving the Dock ends the suppression of the menu icon")
     func leavingDockEndsSuppression() {
         var state = HoverState<String>()
