@@ -11,6 +11,9 @@ permissions:
 
 jobs:
   release:
+    # Every step signs, notarizes or publishes, so a manual run works only
+    # on a version tag ref.
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: macos-26
     timeout-minutes: 60
 
@@ -18,7 +21,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Check that the tag matches Info.plist
-        if: startsWith(github.ref, 'refs/tags/v')
         run: |
           set -euo pipefail
           PLIST_VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Resources/Info.plist)
@@ -30,7 +32,6 @@ jobs:
       # The release body is the tag's CHANGELOG section. Extracted first, so a
       # missing section fails before the build and the notarization.
       - name: Extract release notes from CHANGELOG
-        if: startsWith(github.ref, 'refs/tags/v')
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
@@ -128,7 +129,6 @@ jobs:
           prerelease: false
 
       - name: Bump Homebrew cask in KilimcininKorOglu/homebrew-tap
-        if: startsWith(github.ref, 'refs/tags/v')
         env:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
