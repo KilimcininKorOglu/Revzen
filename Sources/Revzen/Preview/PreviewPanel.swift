@@ -135,13 +135,13 @@ private struct PreviewTile: View {
         if let image {
             Image(decorative: image, scale: 1)
                 .resizable()
-                .aspectRatio(contentMode: .fit)
+                .scaledToFit()
                 .clipShape(RoundedRectangle(cornerRadius: 4))
                 .opacity(window.window.isMinimized ? 0.6 : 1)
         } else {
             Image(nsImage: appIcon)
                 .resizable()
-                .aspectRatio(contentMode: .fit)
+                .scaledToFit()
                 .frame(width: min(64, imageSize.height * 0.6))
                 .opacity(0.8)
         }
