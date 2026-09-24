@@ -16,6 +16,9 @@ final class AppDirectory: Sendable {
         var appsByURL: [URL: RunningApp] = [:]
         var frontmostPID: pid_t?
         var excludedBundleIDs: Set<String> = []
+        /// Counts app activations, so a click can tell whether the app
+        /// stayed frontmost since an earlier click.
+        var activationGeneration = 0
     }
 
     private let state = Mutex(State())
@@ -27,6 +30,10 @@ final class AppDirectory: Sendable {
 
     func isFrontmost(_ pid: pid_t) -> Bool {
         state.withLock { $0.frontmostPID == pid }
+    }
+
+    var activationGeneration: Int {
+        state.withLock { $0.activationGeneration }
     }
 
     func isExcluded(_ app: RunningApp) -> Bool {
@@ -45,6 +52,7 @@ final class AppDirectory: Sendable {
         state.withLock {
             $0.appsByURL = Dictionary(apps.map { ($0.bundleURL, $0) }, uniquingKeysWith: { first, _ in first })
             $0.frontmostPID = frontmost
+            $0.activationGeneration += 1
         }
     }
 
@@ -66,7 +74,10 @@ final class AppDirectory: Sendable {
     @MainActor
     func didActivate(_ app: NSRunningApplication) {
         let pid = app.processIdentifier
-        state.withLock { $0.frontmostPID = pid }
+        state.withLock {
+            $0.frontmostPID = pid
+            $0.activationGeneration += 1
+        }
     }
 
     @MainActor
