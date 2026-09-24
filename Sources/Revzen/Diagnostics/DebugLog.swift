@@ -79,7 +79,7 @@ private final class LogFileWriter: @unchecked Sendable {
         queue.async { [self] in
             let stamp = date.formatted(Self.stampStyle)
             do {
-                try append(Data("\(stamp) \(line)\n".utf8))
+                try append(Data("\(stamp) \(LogLine.singleLine(line))\n".utf8))
                 failed = false
             } catch {
                 handle = nil
