@@ -18,14 +18,14 @@ Or download `Revzen.dmg` from the [latest release](https://github.com/Kilimcinin
 
 ## Features
 
-- **Click to minimize.** Click the icon of the active app to minimize its focused window. Click it again to restore the window minimized last. Modified clicks (Command, Option, Control, Shift) keep their Dock meaning.
+- **Click to minimize.** Click the icon of the active app to minimize its focused window. Click it again to restore that window. Modified clicks (Command, Option, Control, Shift) keep their Dock meaning.
 - **Window previews.** Hover a Dock icon to see a preview of each window of the app, with the window title under it. The previews are in alphabetical order of the titles. Click a preview to bring that window to the front, restoring it when minimized.
 - **Close from the preview.** Close a window with the "x" in the corner of its preview, or with a middle click on the preview. The app may still ask to save changes.
 - **Minimized windows.** ScreenCaptureKit cannot capture a minimized window, so Revzen reads its last image from the window server through a private SkyLight call. When that call fails, the preview shows the last image Revzen took of the window: during previews, before a Dock click minimizes a window, when an app stops being active, and every 10 seconds for the active app. Without either image, the tile shows the app icon.
 - **Scroll to switch.** Scroll over a Dock icon to bring the app's windows to the front one after another, in the order they were created.
 - **Spaces.** Optionally show windows from other Spaces in the preview.
 - **Updates.** Revzen checks GitHub for a new release once a day, and "Check for Updates…" in the menu checks at once. A new release opens a window with its notes, and Revzen installs it in place (see [Updates](#updates)).
-- **Settings.** Preview delay, excluded apps, other Spaces, launch at login and the automatic update check. Revzen does nothing for an excluded app: the Dock handles its clicks, and it gets no preview or scroll switching.
+- **Settings.** Preview delay, excluded apps, other Spaces, launch at login, the automatic update check and debug logging. Revzen does nothing for an excluded app: the Dock handles its clicks, and it gets no preview or scroll switching.
 - **Appearance.** The preview panel and the Settings window use system materials and colors, so they follow the light and dark appearance.
 
 ## Requirements
@@ -49,9 +49,13 @@ Before the new version replaces the running app, Revzen checks:
 
 A failed check stops the update and shows the reason. When Revzen is in a folder that the user cannot write, macOS asks for an administrator password. Downloads stay in `~/Library/Caches/Revzen/updates` and are deleted after seven days.
 
+## Diagnostics
+
+Settings > Diagnostics > Debug logging writes every Dock click, hover, scroll, preview, window and update event to `~/Library/Logs/Revzen/revzen.log`. It is off by default. When the file grows past 5 MB, Revzen renames it to `revzen.log.1` and starts a new file, so at most two files remain.
+
 ## Building
 
-The project is a Swift package. The Makefile builds a signed app bundle.
+The project is a Swift package (Swift 6). The Makefile builds a signed app bundle. `make lint` needs SwiftLint. `make dmg` needs `create-dmg`, and `make release` also needs `minisign`.
 
 | Target       | Description                                                                      |
 |--------------|----------------------------------------------------------------------------------|
@@ -71,10 +75,11 @@ The binary is universal (arm64 and x86_64).
 
 ## Releasing
 
-1. Set `CFBundleShortVersionString` in `Resources/Info.plist` and commit.
-2. Push a tag with the same version, for example `git tag v1.0.1 && git push origin v1.0.1`.
+1. Set `CFBundleShortVersionString` in `Resources/Info.plist` to the new version and increase `CFBundleVersion` by 1.
+2. Add a `## [X.Y.Z] - YYYY-MM-DD` section to `CHANGELOG.md`, then commit.
+3. Push a tag with the same version: `git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z`.
 
-The `Release` workflow builds, signs and notarizes the app and the DMG, signs the DMG with minisign, publishes the GitHub release with `Revzen.dmg` and `Revzen.dmg.minisig`, and bumps `Casks/revzen.rb` in [KilimcininKorOglu/homebrew-tap](https://github.com/KilimcininKorOglu/homebrew-tap). The workflow fails when the tag does not match `Info.plist`. It needs these repository secrets: `APPLE_DEVELOPER_ID_CERT_P12`, `APPLE_DEVELOPER_ID_CERT_PWD`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_SPECIFIC_PWD`, `MINISIGN_KEY`, `MINISIGN_KEY_PWD` and `HOMEBREW_TAP_TOKEN`.
+The `Release` workflow builds, signs and notarizes the app and the DMG, signs the DMG with minisign, publishes the GitHub release with the tag's `CHANGELOG.md` section as its notes and `Revzen.dmg` and `Revzen.dmg.minisig` as assets, and bumps `Casks/revzen.rb` in [KilimcininKorOglu/homebrew-tap](https://github.com/KilimcininKorOglu/homebrew-tap). The workflow fails when the tag does not match `Info.plist` or when `CHANGELOG.md` has no section for the version. It needs these repository secrets: `APPLE_DEVELOPER_ID_CERT_P12`, `APPLE_DEVELOPER_ID_CERT_PWD`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_SPECIFIC_PWD`, `MINISIGN_KEY`, `MINISIGN_KEY_PWD` and `HOMEBREW_TAP_TOKEN`.
 
 ## Private API
 
