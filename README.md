@@ -52,7 +52,7 @@ A failed check stops the update and shows the reason. When Revzen is in a folder
 
 ## Diagnostics
 
-To report a problem, turn on Settings > Diagnostics > Debug logging and reproduce the problem. Revzen writes every Dock click, hover, scroll, preview, window and update event to `~/Library/Logs/Revzen/revzen.log`. "Show in Finder" opens the folder. The log includes the window titles and names of other apps, so only your user account can read it. Check the file before you share it, and delete it with "Delete Log" when you no longer need it. Turning debug logging off keeps the file. Debug logging is off by default. When the file grows past 5 MB, Revzen renames it to `revzen.log.1` and starts a new file, so the logs use at most about 10 MB.
+To report a problem, turn on Settings > Diagnostics > Debug logging and reproduce the problem. Revzen writes every Dock click, hover, scroll, preview, window and update event to `~/Library/Logs/Revzen/revzen.log`. "Show in Finder" opens the folder. The log includes the window titles and names of other apps, so only your user account can read it. Check the file before you share it, and delete it with "Delete Log" when you no longer need it. Turning debug logging off keeps the file. Debug logging is off by default and turns off again when Revzen quits, so turn it on again after a restart. When the file grows past 5 MB, Revzen renames it to `revzen.log.1` and starts a new file, so the logs use at most about 10 MB.
 
 ## Compatibility
 

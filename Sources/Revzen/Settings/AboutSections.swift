@@ -36,7 +36,8 @@ struct DiagnosticsSection: View {
                 Text("Debug logging")
                 Text(
                     "Writes every Dock click, hover, scroll and window action to \(logPath), "
-                        + "including the window titles and names of other apps. Delete the log after you send it.")
+                        + "including the window titles and names of other apps. It turns off when Revzen quits. "
+                        + "Delete the log after you send it.")
             }
             LabeledContent("Log file") {
                 HStack {

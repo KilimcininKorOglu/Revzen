@@ -23,10 +23,10 @@ struct RevzenSettingsTests {
         #expect(settings.debugLogging == false)
     }
 
-    @Test("Saved settings survive a relaunch")
+    @Test("Saved settings survive a relaunch, and debug logging starts off again")
     func roundTrip() throws {
         let (store, _) = makeStore()
-        let saved = RevzenSettings(
+        var saved = RevzenSettings(
             hoverDelayMs: 750,
             excludedBundleIDs: ["com.apple.Terminal"],
             showOtherSpaces: true,
@@ -34,7 +34,19 @@ struct RevzenSettingsTests {
             debugLogging: true
         )
         try store.save(saved)
+        saved.debugLogging = false
         #expect(try store.load() == saved)
+    }
+
+    @Test("A debugLogging value written into the stored settings does not turn the log on")
+    func storedDebugLoggingIsIgnored() throws {
+        let (store, defaults) = makeStore()
+        let json = #"{"hoverDelayMs":100,"excludedBundleIDs":[],"showOtherSpaces":false,"debugLogging":true}"#
+        defaults.set(Data(json.utf8), forKey: SettingsStore.key)
+        #expect(try store.load().debugLogging == false)
+        try store.save(RevzenSettings(debugLogging: true))
+        let stored = try #require(defaults.data(forKey: SettingsStore.key).flatMap { String(bytes: $0, encoding: .utf8) })
+        #expect(!stored.contains("debugLogging"))
     }
 
     @Test(

@@ -17,6 +17,9 @@ public struct RevzenSettings: Codable, Sendable, Equatable {
     /// Check GitHub for a new release in the background once a day.
     public var autoCheckUpdates: Bool
     /// Write every Dock, pointer, preview and window event to the debug log.
+    /// Not stored: any process of the user can write the stored settings, and
+    /// the log records content that Revzen reads with its Accessibility
+    /// grant, so the log starts off at every launch.
     public var debugLogging: Bool
 
     public init(
@@ -33,6 +36,12 @@ public struct RevzenSettings: Codable, Sendable, Equatable {
         self.debugLogging = debugLogging
     }
 
+    /// The stored fields. `debugLogging` is left out, and a stored value
+    /// from an older build is ignored.
+    enum CodingKeys: String, CodingKey {
+        case hoverDelayMs, excludedBundleIDs, showOtherSpaces, autoCheckUpdates
+    }
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
@@ -40,8 +49,7 @@ public struct RevzenSettings: Codable, Sendable, Equatable {
             excludedBundleIDs: try container.decode(Set<String>.self, forKey: .excludedBundleIDs),
             showOtherSpaces: try container.decode(Bool.self, forKey: .showOtherSpaces),
             // Settings saved before 1.0.0 have no such field.
-            autoCheckUpdates: try container.decodeIfPresent(Bool.self, forKey: .autoCheckUpdates) ?? true,
-            debugLogging: try container.decodeIfPresent(Bool.self, forKey: .debugLogging) ?? false
+            autoCheckUpdates: try container.decodeIfPresent(Bool.self, forKey: .autoCheckUpdates) ?? true
         )
     }
 
