@@ -34,10 +34,15 @@ struct DiagnosticsSection: View {
         Section("Diagnostics") {
             Toggle(isOn: $debugLogging) {
                 Text("Debug logging")
-                Text("Writes every Dock click, hover, scroll and window action to \(logPath).")
+                Text(
+                    "Writes every Dock click, hover, scroll and window action to \(logPath), "
+                        + "including the window titles and names of other apps. Delete the log after you send it.")
             }
             LabeledContent("Log file") {
-                Button("Show in Finder", action: showLog)
+                HStack {
+                    Button("Show in Finder", action: showLog)
+                    Button("Delete Log", role: .destructive, action: deleteLog)
+                }
             }
         }
     }
@@ -52,6 +57,14 @@ struct DiagnosticsSection: View {
             NSWorkspace.shared.activateFileViewerSelecting([file])
         } else {
             ErrorReporter.present("There is no debug log yet", error: CocoaError(.fileNoSuchFile))
+        }
+    }
+
+    private func deleteLog() {
+        do {
+            try DebugLog.deleteFiles()
+        } catch {
+            ErrorReporter.present("The debug log could not be deleted", error: error)
         }
     }
 }

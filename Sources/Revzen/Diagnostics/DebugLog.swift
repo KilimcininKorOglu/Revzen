@@ -53,6 +53,12 @@ enum DebugLog {
         writer.write(Date(), "[\(area.rawValue)] ERROR \(message)")
     }
 
+    /// Deletes `revzen.log` and `revzen.log.1`. They hold window titles and
+    /// app names of other apps. A later event starts a new file.
+    static func deleteFiles() throws {
+        try writer.deleteFiles()
+    }
+
     /// The OSLog logger for failures of one area.
     static func logger(for area: Area) -> Logger {
         Logger(subsystem: subsystem, category: area.rawValue)
@@ -107,17 +113,34 @@ private final class LogFileWriter: @unchecked Sendable {
         }
     }
 
+    /// The file holds content of other apps, so only the user can read it.
     private func openHandle() throws -> FileHandle {
         if let handle { return handle }
         let manager = FileManager.default
-        try manager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if !manager.fileExists(atPath: url.path) {
-            guard manager.createFile(atPath: url.path, contents: nil) else { throw CocoaError(.fileWriteUnknown) }
+        let folder = url.deletingLastPathComponent()
+        try manager.createDirectory(at: folder, withIntermediateDirectories: true)
+        try manager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path)
+        if manager.fileExists(atPath: url.path) {
+            try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        } else {
+            guard manager.createFile(atPath: url.path, contents: nil, attributes: [.posixPermissions: 0o600]) else {
+                throw CocoaError(.fileWriteUnknown)
+            }
         }
         let opened = try FileHandle(forWritingTo: url)
         try opened.seekToEnd()
         handle = opened
         return opened
+    }
+
+    func deleteFiles() throws {
+        try queue.sync {
+            try handle?.close()
+            handle = nil
+            for file in [url, url.appendingPathExtension("1")] where FileManager.default.fileExists(atPath: file.path) {
+                try FileManager.default.removeItem(at: file)
+            }
+        }
     }
 
     private func rotate() throws {
