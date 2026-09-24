@@ -41,7 +41,7 @@ private final class Harness {
     let install = Gate<Void>()
     let verifyError = ErrorBox()
     private(set) var presented = 0
-    private let suite = "revzen.tests.update.\(UUID().uuidString)"
+    private let temporary = TemporaryDefaults()
     let service: UpdateService
 
     static let staged = URL(fileURLWithPath: "/tmp/Revzen.app")
@@ -57,13 +57,13 @@ private final class Harness {
             install: { [install] _ in try await install.wait() },
             cleanUp: {}
         )
-        service = UpdateService(defaults: UserDefaults(suiteName: suite)!, dependencies: dependencies)
+        service = UpdateService(defaults: temporary.defaults, dependencies: dependencies)
         service.onPresent = { [unowned self] in presented += 1 }
     }
 
     func finish() {
         service.stop()
-        UserDefaults.standard.removePersistentDomain(forName: suite)
+        temporary.remove()
     }
 
     /// Lets the service tasks run until `condition` holds.

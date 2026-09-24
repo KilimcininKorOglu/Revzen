@@ -3,13 +3,18 @@ import Testing
 
 @testable import RevzenCore
 
+/// A class, so that `deinit` removes the UserDefaults suite of each test
+/// and no plist stays in ~/Library/Preferences.
 @Suite("RevzenSettings")
-struct RevzenSettingsTests {
+final class RevzenSettingsTests {
+    private let temporary = TemporaryDefaults()
+
+    deinit {
+        temporary.remove()
+    }
+
     private func makeStore() -> (SettingsStore, UserDefaults) {
-        let suite = "revzen.tests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defaults.removePersistentDomain(forName: suite)
-        return (SettingsStore(defaults: defaults), defaults)
+        (SettingsStore(defaults: temporary.defaults), temporary.defaults)
     }
 
     @Test("A fresh install starts with the documented defaults")
