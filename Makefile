@@ -31,7 +31,10 @@ sign:
 	codesign --verify --strict $(APP_BUNDLE)
 
 run: app
+	@# open sends a reopen event to a process that is still exiting, and the
+	@# launch fails with procNotFound. Wait for the old instance to go first.
 	-pkill -x $(APP_NAME)
+	@while pgrep -x $(APP_NAME) >/dev/null; do sleep 0.1; done
 	open $(APP_BUNDLE)
 
 clean:
