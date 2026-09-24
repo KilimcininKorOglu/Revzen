@@ -53,14 +53,14 @@ enum WindowService {
         }
     }
 
-    static func state(of pid: pid_t, isFrontmost: Bool) -> AppWindowState {
-        let windows = windows(of: pid)
-        let minimized = windows.filter(\.isMinimized).count
-        return AppWindowState(
-            isFrontmost: isFrontmost,
-            visibleCount: windows.count - minimized,
-            minimizedCount: minimized
-        )
+    /// The focused window of the app when it is a standard window that is not
+    /// minimized, so the Dock click can minimize it. Nil for a focused panel
+    /// or dialog, and when the app has no focused window.
+    static func focusedWindow(of pid: pid_t) -> AXElement? {
+        guard let window = AXElement.application(pid).element(kAXFocusedWindowAttribute),
+              window.bool(kAXMinimizedAttribute) == false,
+              window.string(kAXSubroleAttribute) == kAXStandardWindowSubrole else { return nil }
+        return window
     }
 }
 
@@ -106,12 +106,8 @@ extension WindowService {
         report(button.perform(kAXPressAction), "close", window.pid)
     }
 
-    /// Minimizes (`true`) or restores (`false`) every window of the app that
-    /// is not in that state yet. Activation is left to the caller.
-    static func setAllMinimized(_ minimized: Bool, of pid: pid_t) {
-        for window in windows(of: pid, timeout: AXElement.actionTimeout) where window.isMinimized != minimized {
-            report(window.element.set(kAXMinimizedAttribute, minimized), "set minimized=\(minimized)", pid)
-        }
+    static func minimize(_ window: AXElement, pid: pid_t) {
+        report(window.withTimeout(AXElement.actionTimeout).set(kAXMinimizedAttribute, true), "minimize", pid)
     }
 
     private static func report(_ result: AXError, _ action: String, _ pid: pid_t) {

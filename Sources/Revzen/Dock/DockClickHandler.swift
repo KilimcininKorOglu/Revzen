@@ -43,25 +43,18 @@ final class DockClickHandler: Sendable {
               let item = dock.appItem(at: event.location),
               let app = directory.app(forBundleURL: item.appURL) else { return false }
         let excluded = directory.isExcluded(app)
-        if excluded { return false }
-        let state = WindowService.state(of: app.pid, isFrontmost: directory.isFrontmost(app.pid))
-        switch ClickPolicy.action(for: state, isExcluded: excluded) {
-        case .passThrough:
-            return false
-        case .minimizeAll:
-            let pid = app.pid
-            Task { [beforeMinimize, actions] in
-                await beforeMinimize(pid)
-                actions.async { WindowService.setAllMinimized(true, of: pid) }
-            }
-            return true
-        case .restoreAll:
-            // The Dock click stays: the Dock activates the app and restores one
-            // window, which AX activation of a background app cannot do
-            // reliably. Revzen restores the other windows next to it.
-            actions.async { WindowService.setAllMinimized(false, of: app.pid) }
-            return false
+        let isFrontmost = directory.isFrontmost(app.pid)
+        // The AX read is skipped when the answer cannot change the action.
+        let focused = !excluded && isFrontmost ? WindowService.focusedWindow(of: app.pid) : nil
+        let state = AppWindowState(isFrontmost: isFrontmost, hasFocusedWindow: focused != nil)
+        guard ClickPolicy.action(for: state, isExcluded: excluded) == .minimizeFocused,
+              let focused else { return false }
+        let pid = app.pid
+        Task { [beforeMinimize, actions] in
+            await beforeMinimize(pid)
+            actions.async { WindowService.minimize(focused, pid: pid) }
         }
+        return true
     }
 }
 
