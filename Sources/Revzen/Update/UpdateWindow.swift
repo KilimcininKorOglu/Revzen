@@ -75,6 +75,8 @@ struct UpdateView: View {
         case .ready(_, let version):
             Message(title: "Revzen \(version) is ready", detail: "Revzen quits, installs the update and opens again.")
             buttons(secondary: ("Later", close), primary: ("Install and Relaunch", service.installAndRelaunch))
+        case .installing(let version):
+            ProgressRow(text: "Installing Revzen \(version)…")
         case .failed(let message):
             Message(title: "The update did not complete", detail: message)
             buttons(primary: ("OK", dismiss))

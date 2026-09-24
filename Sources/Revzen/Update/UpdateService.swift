@@ -18,6 +18,7 @@ final class UpdateService {
         case available(GitHubRelease, SemanticVersion)
         case downloading(GitHubRelease, SemanticVersion)
         case ready(URL, SemanticVersion)
+        case installing(SemanticVersion)
         case failed(String)
     }
 
@@ -79,13 +80,13 @@ final class UpdateService {
     func windowClosed() {
         switch state {
         case .available, .upToDate, .failed: state = .idle
-        case .idle, .checking, .downloading, .ready: break
+        case .idle, .checking, .downloading, .ready, .installing: break
         }
     }
 
     private var isBusy: Bool {
         switch state {
-        case .checking, .downloading, .available, .ready: true
+        case .checking, .downloading, .available, .ready, .installing: true
         case .idle, .upToDate, .failed: false
         }
     }
@@ -160,6 +161,8 @@ extension UpdateService {
     func installAndRelaunch() {
         guard case .ready(let app, let version) = state else { return }
         DebugLog.event(.update, "installing \(app.path) and relaunching")
+        // One install at a time: the window shows progress, not the button.
+        state = .installing(version)
         perform("install") { [self] in
             do {
                 // The cache folder is writable by every process of the user,
