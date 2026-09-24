@@ -14,6 +14,7 @@ final class AppModel {
     var settings: RevzenSettings {
         didSet {
             guard settings != oldValue else { return }
+            directory.setExcluded(settings.excludedBundleIDs)
             do {
                 try store.save(settings)
             } catch {
@@ -23,6 +24,10 @@ final class AppModel {
     }
 
     @ObservationIgnored private let store: SettingsStore
+    @ObservationIgnored private let directory = AppDirectory()
+    @ObservationIgnored private let dock = DockAX()
+    @ObservationIgnored private var workspaceObserver: WorkspaceObserver?
+    @ObservationIgnored private var eventTap: EventTap?
 
     init(store: SettingsStore = SettingsStore()) {
         self.store = store
@@ -32,6 +37,7 @@ final class AppModel {
             settings = RevzenSettings()
             ErrorReporter.present("Revzen could not read the saved settings. The defaults are in use.", error: error)
         }
+        directory.setExcluded(settings.excludedBundleIDs)
     }
 
     func start() {
@@ -45,10 +51,22 @@ final class AppModel {
 
     func stop() {
         permissions.stopWaiting()
+        eventTap?.stop()
+        eventTap = nil
+        workspaceObserver?.invalidate()
+        workspaceObserver = nil
     }
 
     private func startServices() {
-        log.info("accessibility granted, services start")
+        workspaceObserver = WorkspaceObserver(directory: directory, dock: dock)
+        let clicks = DockClickHandler(dock: dock, directory: directory)
+        let tap = EventTap(events: [.leftMouseDown, .leftMouseUp], handler: clicks.handle)
+        do {
+            try tap.start()
+            eventTap = tap
+        } catch {
+            ErrorReporter.present("Revzen could not start Dock click handling", error: error)
+        }
     }
 }
 
