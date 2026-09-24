@@ -64,6 +64,15 @@ final class UpdateService {
         state = .idle
     }
 
+    /// The window closed with its title bar button. A shown result ends as
+    /// with "Later" or "OK". A running step continues and shows its result.
+    func windowClosed() {
+        switch state {
+        case .available, .upToDate, .failed: state = .idle
+        case .idle, .checking, .downloading, .ready: break
+        }
+    }
+
     private var isBusy: Bool {
         switch state {
         case .checking, .downloading, .available, .ready: true
@@ -120,6 +129,7 @@ extension UpdateService {
             let app = try await UpdateInstaller.prepare(release, version: version)
             DebugLog.event(.update, "\(version) verified and staged at \(app.path)")
             state = .ready(app, version)
+            onPresent?()
         }
     }
 
@@ -131,7 +141,8 @@ extension UpdateService {
         }
     }
 
-    /// Runs one update step; a failure shows in the window.
+    /// Runs one update step; a failure shows in the window, also when the
+    /// user closed it during the step.
     private func perform(_ step: String, _ work: @escaping @MainActor () async throws -> Void) {
         Task {
             do {
@@ -139,6 +150,7 @@ extension UpdateService {
             } catch {
                 DebugLog.error(.update, "update \(step) failed: \(error.localizedDescription)")
                 state = .failed(error.localizedDescription)
+                onPresent?()
             }
         }
     }

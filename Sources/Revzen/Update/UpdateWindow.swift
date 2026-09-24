@@ -36,6 +36,7 @@ final class UpdateWindowController {
         ) { [service] _ in
             MainActor.assumeIsolated {
                 DebugLog.event(.update, "update window closed in state \(service.state)")
+                service.windowClosed()
             }
         }
         return window
