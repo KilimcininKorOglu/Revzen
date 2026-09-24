@@ -44,6 +44,20 @@ public enum ReleaseVerification {
         "anchor apple generic and certificate leaf[subject.OU] = \"\(teamID)\" and notarized"
     }
 
+    /// True for an https download of a release asset of `repository`
+    /// (`owner/name`) on github.com. The URL comes from the GitHub API
+    /// response, so it is checked before any request.
+    public static func isReleaseAssetURL(_ url: URL, repository: String) -> Bool {
+        url.scheme == "https" && url.host() == "github.com" && url.user() == nil
+            && url.path().hasPrefix("/\(repository)/releases/download/")
+    }
+
+    /// True for a redirect target that GitHub uses for release assets.
+    public static func isAssetRedirect(_ url: URL) -> Bool {
+        guard url.scheme == "https", url.user() == nil, let host = url.host() else { return false }
+        return host == "github.com" || host.hasSuffix(".githubusercontent.com")
+    }
+
     /// True only when both versions are known and `latest` is newer.
     public static func isNewer(_ latest: SemanticVersion?, than current: SemanticVersion?) -> Bool {
         guard let latest, let current else { return false }

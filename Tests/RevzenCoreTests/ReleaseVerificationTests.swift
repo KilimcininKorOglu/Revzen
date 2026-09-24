@@ -86,4 +86,35 @@ struct ReleaseVerificationTests {
     func newer(latest: String, current: String, expected: Bool) {
         #expect(ReleaseVerification.isNewer(SemanticVersion(latest), than: SemanticVersion(current)) == expected)
     }
+
+    @Test(
+        "Only https release asset downloads of this repository are requested",
+        arguments: [
+            ("https://github.com/KilimcininKorOglu/Revzen/releases/download/v1.2.3/Revzen.dmg", true),
+            ("http://github.com/KilimcininKorOglu/Revzen/releases/download/v1.2.3/Revzen.dmg", false),
+            ("https://github.com/someone/Revzen/releases/download/v1.2.3/Revzen.dmg", false),
+            ("https://192.168.1.1/KilimcininKorOglu/Revzen/releases/download/v1.2.3/Revzen.dmg", false),
+            ("https://github.com.example.com/KilimcininKorOglu/Revzen/releases/download/v1.2.3/Revzen.dmg", false),
+            ("https://user@github.com/KilimcininKorOglu/Revzen/releases/download/v1.2.3/Revzen.dmg", false),
+            ("file:///KilimcininKorOglu/Revzen/releases/download/v1.2.3/Revzen.dmg", false)
+        ])
+    func assetURL(url: String, expected: Bool) throws {
+        let parsed = try #require(URL(string: url))
+        #expect(ReleaseVerification.isReleaseAssetURL(parsed, repository: "KilimcininKorOglu/Revzen") == expected)
+    }
+
+    @Test(
+        "A download follows redirects only to GitHub asset hosts over https",
+        arguments: [
+            ("https://release-assets.githubusercontent.com/github-production-release-asset/1/2", true),
+            ("https://objects.githubusercontent.com/x", true),
+            ("https://github.com/x", true),
+            ("http://release-assets.githubusercontent.com/x", false),
+            ("https://evilgithubusercontent.com/x", false),
+            ("https://localhost/x", false)
+        ])
+    func redirect(url: String, expected: Bool) throws {
+        let parsed = try #require(URL(string: url))
+        #expect(ReleaseVerification.isAssetRedirect(parsed) == expected)
+    }
 }

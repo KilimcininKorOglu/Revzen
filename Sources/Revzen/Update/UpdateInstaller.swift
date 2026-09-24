@@ -12,6 +12,7 @@ enum UpdateFailure: Error, LocalizedError {
     case mountPointMissing
     case codeSignature(OSStatus)
     case wrongApp(String)
+    case untrustedURL(URL)
 
     var errorDescription: String? {
         switch self {
@@ -23,6 +24,7 @@ enum UpdateFailure: Error, LocalizedError {
         case .mountPointMissing: "The disk image did not report a mount point."
         case .codeSignature(let status): "The new app is not notarized or not signed by the developer (OSStatus \(status))."
         case .wrongApp(let detail): "The disk image holds an unexpected app: \(detail)."
+        case .untrustedURL(let url): "The release lists a download outside the GitHub releases of Revzen: \(url)."
         }
     }
 }
@@ -41,6 +43,10 @@ enum UpdateInstaller {
     static func prepare(_ release: GitHubRelease, version: SemanticVersion) async throws -> URL {
         guard let assets = release.installAssets(dmgName: AppInfo.dmgName) else { throw UpdateFailure.missingAssets }
         guard let digest = assets.dmg.sha256 else { throw UpdateFailure.missingDigest }
+        for url in [assets.dmg.downloadURL, assets.signature.downloadURL]
+        where !ReleaseVerification.isReleaseAssetURL(url, repository: AppInfo.repository) {
+            throw UpdateFailure.untrustedURL(url)
+        }
         try removeStaleDownloads()
         let folder = cacheRoot.appending(path: version.description, directoryHint: .isDirectory)
         if FileManager.default.fileExists(atPath: folder.path) {
@@ -60,7 +66,8 @@ enum UpdateInstaller {
     }
 
     private static func download(_ url: URL, to destination: URL) async throws -> URL {
-        let (temporary, response) = try await URLSession.shared.download(for: UpdateChecker.request(url, timeout: 60))
+        let (temporary, response) = try await URLSession.shared.download(
+            for: UpdateChecker.request(url, timeout: 60), delegate: AssetRedirectGuard())
         try UpdateChecker.requireSuccess(response)
         try FileManager.default.moveItem(at: temporary, to: destination)
         return destination
@@ -104,6 +111,21 @@ extension UpdateInstaller {
         guard comment == ReleaseVerification.trustedComment(appName: AppInfo.name, version: version) else {
             throw UpdateFailure.wrongTrustedComment(comment)
         }
+    }
+}
+
+/// Follows a redirect only to the hosts GitHub serves release assets from.
+/// A refused redirect ends the download with the redirect status.
+private final class AssetRedirectGuard: NSObject, URLSessionTaskDelegate {
+    func urlSession(
+        _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest
+    ) async -> URLRequest? {
+        guard let url = request.url, ReleaseVerification.isAssetRedirect(url) else {
+            DebugLog.error(.update, "refused the download redirect to \(request.url?.absoluteString ?? "no URL")")
+            return nil
+        }
+        return request
     }
 }
 
