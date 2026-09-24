@@ -66,9 +66,10 @@ enum UpdateInstaller {
         return destination
     }
 
-    /// Deletes version folders older than a week. A folder of the current
-    /// attempt is replaced anyway, so only abandoned downloads are removed.
-    private static func removeStaleDownloads() throws {
+    /// Deletes the folders of releases that are not newer than the running
+    /// app, which holds the downloads of an installed update, and folders
+    /// older than a week. Runs at launch and before each download.
+    static func removeStaleDownloads() throws {
         let manager = FileManager.default
         guard manager.fileExists(atPath: cacheRoot.path) else { return }
         let limit = Date().addingTimeInterval(-cacheLifetime)
@@ -77,7 +78,9 @@ enum UpdateInstaller {
         )
         for folder in folders {
             let modified = try folder.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
-            if let modified, modified < limit {
+            let installed = !ReleaseVerification.isNewer(SemanticVersion(folder.lastPathComponent), than: AppInfo.version)
+            if installed || modified.map({ $0 < limit }) ?? false {
+                DebugLog.event(.update, "removing the download folder \(folder.lastPathComponent)")
                 try manager.removeItem(at: folder)
             }
         }

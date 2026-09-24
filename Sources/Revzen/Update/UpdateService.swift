@@ -41,6 +41,13 @@ final class UpdateService {
     /// change in Settings applies without a restart.
     func start(isAutoCheckEnabled: @escaping () -> Bool) {
         self.isAutoCheckEnabled = isAutoCheckEnabled
+        Task.detached {
+            do {
+                try UpdateInstaller.removeStaleDownloads()
+            } catch {
+                DebugLog.error(.update, "could not clean the update downloads: \(error.localizedDescription)")
+            }
+        }
         poller = Task { [weak self] in
             while !Task.isCancelled {
                 self?.checkIfDue()
