@@ -63,7 +63,8 @@ enum AppReplacer {
         ]
         let arguments = script.flatMap { ["-e", $0] } + [swapScript, staged.path, target.path]
         do {
-            _ = try await ProcessRunner.run("/usr/bin/osascript", arguments)
+            // The password prompt waits for the user, so it has no time limit.
+            _ = try await ProcessRunner.run("/usr/bin/osascript", arguments, timeout: nil)
         } catch let failure as ProcessRunner.Failure {
             // AppleScript reports a cancelled prompt as error -128.
             throw failure.message.contains("(-128)") ? Failure.cancelled : Failure.administratorCopy(failure.message)
