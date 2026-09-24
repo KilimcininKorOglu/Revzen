@@ -27,7 +27,18 @@ struct HoverStateTests {
     func leavingDockDoesNotPreview() {
         var state = hoveringTextEdit()
         #expect(state.dockNotified("TextEdit", pointerInside: false) == nil)
+        state.pointerMovedAway()
         #expect(state.hovered == nil)
+        #expect(state.pointerReturned() == nil)
+    }
+
+    @Test("Entering the Dock above the icon previews it once the pointer reaches the icon")
+    func entryAboveIconWaitsForPointer() {
+        var state = HoverState<String>()
+        // The Dock selects the icon while the pointer is still above its frame.
+        #expect(state.dockNotified("TextEdit", pointerInside: false) == nil)
+        #expect(state.hovered == "TextEdit")
+        #expect(state.pointerReturned() == "TextEdit")
     }
 
     @Test("Returning to the same icon from the gap inside the Dock previews it again")
@@ -65,10 +76,12 @@ struct HoverStateTests {
         #expect(state.pointerReturned() == "TextEdit")
     }
 
-    @Test("Leaving the Dock ends the suppression of the menu icon")
-    func leavingDockEndsSuppression() {
+    @Test("A notification with the pointer outside the menu icon keeps the suppression until the pointer leaves it")
+    func outsideNotificationKeepsSuppression() {
         var state = menuOpenedOnTextEdit()
         _ = state.dockNotified("TextEdit", pointerInside: false)
+        #expect(state.suppressed == "TextEdit")
+        state.pointerLeftSuppressed()
         #expect(state.dockNotified("TextEdit", pointerInside: true) == "TextEdit")
     }
 }

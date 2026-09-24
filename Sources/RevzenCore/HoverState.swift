@@ -2,17 +2,20 @@
 ///
 /// The Dock posts its selection-changed notification when the pointer enters
 /// an icon and again when the pointer leaves the Dock, and the selection
-/// still names the last icon in both cases. The pointer position tells the
-/// two apart. Inside the Dock, the Dock posts nothing when the pointer
-/// leaves an icon for the gap below or beside it and comes back, so a return
-/// to the same icon comes from pointer tracking instead.
+/// still names the last icon in both cases. The Dock's hover area is larger
+/// than the icon frame, so on entry the pointer can still be outside the
+/// frame. A notification with the pointer outside the frame therefore
+/// decides nothing: the icon stays hovered, and pointer tracking reports
+/// whether the pointer reaches the icon or moves away. The Dock also posts
+/// nothing when the pointer leaves an icon for the gap below or beside it
+/// and comes back, which pointer tracking covers the same way.
 ///
 /// When the Dock menu of an icon opens, the Dock clears its selection while
 /// the pointer is still on the icon, and selects the icon again when the
 /// menu closes. The icon stays suppressed through both notifications until
 /// the pointer leaves it.
 public struct HoverState<Item: Equatable & Sendable>: Sendable {
-    /// The icon the pointer is over, or last left without leaving the Dock.
+    /// The icon the Dock last selected while the pointer is near it.
     public private(set) var hovered: Item?
     /// The icon whose Dock menu opened. It gets no preview until the pointer
     /// leaves it.
@@ -28,17 +31,16 @@ public struct HoverState<Item: Equatable & Sendable>: Sendable {
             hovered = nil
             return nil
         }
-        guard pointerInside else {
-            // The pointer left the Dock.
-            hovered = nil
-            suppressed = nil
-            return nil
-        }
         if item != suppressed {
             suppressed = nil
         }
         hovered = item
-        return suppressed == nil ? item : nil
+        return pointerInside && suppressed == nil ? item : nil
+    }
+
+    /// The pointer moved away from the hovered icon, out of the Dock.
+    public mutating func pointerMovedAway() {
+        hovered = nil
     }
 
     /// The pointer came back to the hovered icon without a Dock notification.

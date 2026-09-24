@@ -60,11 +60,13 @@ final class PreviewController {
 
     private func hoverChanged(_ item: DockItem?) {
         pending?.cancel()
-        let inside = item.map { Self.pointerIsOver($0.frame) } ?? false
-        // Without a target the pointer may be on its way into the panel.
-        // pointerMoved decides.
+        let point = Self.pointerLocation
+        let inside = item.map { Self.hitArea($0.frame).contains(point) } ?? false
+        // Without a target the pointer may be on its way into the icon or the
+        // panel, or out of the Dock. pointerMoved decides.
         let target = hoverState.dockNotified(item, pointerInside: inside)
-        DebugLog.event(.hover, "\(item?.logName ?? "none") pointerInside=\(inside) -> "
+        DebugLog.event(.hover, "\(item?.logName ?? "none") pointer=\(point.logText) "
+            + "icon=\(item.map { "\(Int($0.frame.minY))..\(Int($0.frame.maxY))" } ?? "-") inside=\(inside) -> "
             + (target.map { "preview \($0.logName)" } ?? "no preview, the pointer decides"))
         if let target {
             schedule(target)
@@ -181,12 +183,7 @@ final class PreviewController {
                 hoverState.pointerLeftSuppressed()
                 updateTracking()
             }
-            // The Dock posts nothing for a return from the gap below or
-            // beside the icon, so the pointer position decides.
-            if let item = hoverState.pointerReturned(), Self.hitArea(item.frame).contains(point) {
-                DebugLog.event(.pointer, "returned to \(item.logName) at \(point.logText)")
-                schedule(item)
-            }
+            reachOrLeaveHovered(point)
             return
         }
         let panelFrame = PanelPlacement.flipped(panel.frame, primaryScreenHeight: NSScreen.primaryHeight)
@@ -195,6 +192,22 @@ final class PreviewController {
         if !Self.hitArea(region).contains(point) {
             hide(reason: "the pointer left \(anchor.logName)\(panel.isVisible ? " and the panel" : "") "
                 + "at \(point.logText)")
+        }
+    }
+
+    /// With no preview pending or shown: the Dock posts nothing when the
+    /// pointer reaches the icon from the edge of the Dock's hover area or
+    /// from the gap below it, so the pointer position decides.
+    private func reachOrLeaveHovered(_ point: CGPoint) {
+        guard let item = hoverState.hovered else { return }
+        if Self.hitArea(item.frame).contains(point) {
+            guard let target = hoverState.pointerReturned() else { return }
+            DebugLog.event(.pointer, "reached \(target.logName) at \(point.logText)")
+            schedule(target)
+        } else if !Self.nearArea(item.frame).contains(point) {
+            DebugLog.event(.pointer, "moved away from \(item.logName) at \(point.logText)")
+            hoverState.pointerMovedAway()
+            updateTracking()
         }
     }
 
@@ -220,12 +233,18 @@ final class PreviewController {
         rect.insetBy(dx: -2, dy: -2)
     }
 
-    private static func pointerIsOver(_ rect: CGRect) -> Bool {
-        let point = PanelPlacement.flipped(
+    /// Around the icon, the pointer is still in the Dock's hover area or in
+    /// the gap next to the icon. Past it, the pointer has left.
+    private static func nearArea(_ rect: CGRect) -> CGRect {
+        rect.insetBy(dx: -rect.width / 2, dy: -rect.height / 2)
+    }
+
+    /// The pointer in top-left global coordinates.
+    private static var pointerLocation: CGPoint {
+        PanelPlacement.flipped(
             CGRect(origin: NSEvent.mouseLocation, size: .zero),
             primaryScreenHeight: NSScreen.primaryHeight
         ).origin
-        return hitArea(rect).contains(point)
     }
 
     private static func screen(containing rect: CGRect) -> NSScreen? {
