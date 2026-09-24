@@ -116,24 +116,28 @@ extension UpdateService {
     func download() {
         guard case .available(let release, let version) = state else { return }
         state = .downloading(release, version)
-        Task {
-            do {
-                let app = try await UpdateInstaller.prepare(release, version: version)
-                state = .ready(app, version)
-            } catch {
-                DebugLog.error(.update, "update download failed: \(error.localizedDescription)")
-                state = .failed(error.localizedDescription)
-            }
+        perform("download") { [self] in
+            let app = try await UpdateInstaller.prepare(release, version: version)
+            DebugLog.event(.update, "\(version) verified and staged at \(app.path)")
+            state = .ready(app, version)
         }
     }
 
     func installAndRelaunch() {
         guard case .ready(let app, _) = state else { return }
+        DebugLog.event(.update, "installing \(app.path) and relaunching")
+        perform("install") {
+            try await AppReplacer.installAndRelaunch(app)
+        }
+    }
+
+    /// Runs one update step; a failure shows in the window.
+    private func perform(_ step: String, _ work: @escaping @MainActor () async throws -> Void) {
         Task {
             do {
-                try await AppReplacer.installAndRelaunch(app)
+                try await work()
             } catch {
-                DebugLog.error(.update, "update install failed: \(error.localizedDescription)")
+                DebugLog.error(.update, "update \(step) failed: \(error.localizedDescription)")
                 state = .failed(error.localizedDescription)
             }
         }

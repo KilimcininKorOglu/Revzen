@@ -7,6 +7,7 @@ import SwiftUI
 final class UpdateWindowController {
     private let service: UpdateService
     private var window: NSWindow?
+    private var closeObserver: NSObjectProtocol?
 
     init(service: UpdateService) {
         self.service = service
@@ -28,6 +29,13 @@ final class UpdateWindowController {
         window.styleMask = [.titled, .closable]
         window.isReleasedWhenClosed = false
         window.center()
+        closeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: window, queue: .main
+        ) { [service] _ in
+            MainActor.assumeIsolated {
+                DebugLog.event(.update, "update window closed in state \(service.state)")
+            }
+        }
         return window
     }
 }
