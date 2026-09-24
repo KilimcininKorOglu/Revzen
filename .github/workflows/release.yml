@@ -41,8 +41,27 @@ jobs:
             exit 1
           fi
 
+      # Both tools run next to the signing secrets, so the job uses fixed
+      # releases checked against SHA-256 values stored here, not the current
+      # Homebrew formulae.
       - name: Install minisign + create-dmg
-        run: brew install minisign create-dmg
+        env:
+          MINISIGN_URL: https://github.com/jedisct1/minisign/releases/download/0.12/minisign-0.12-macos.zip
+          MINISIGN_SHA256: 89000b19535765f9cffc65a65d64a820f433ef6db8020667f7570e06bf6aac63
+          CREATE_DMG_URL: https://github.com/create-dmg/create-dmg/archive/refs/tags/v1.3.0.tar.gz
+          CREATE_DMG_SHA256: c50d2bc97c3d6292642bac55f530d247eaf4bf65ee605f26b4caf339383e381c
+        run: |
+          set -euo pipefail
+          TOOLS="${RUNNER_TEMP}/tools"
+          mkdir -p "$TOOLS/minisign"
+          curl -fsSL -o "$TOOLS/minisign.zip" "$MINISIGN_URL"
+          echo "${MINISIGN_SHA256}  $TOOLS/minisign.zip" | shasum -a 256 -c -
+          unzip -q "$TOOLS/minisign.zip" -d "$TOOLS/minisign"
+          curl -fsSL -o "$TOOLS/create-dmg.tar.gz" "$CREATE_DMG_URL"
+          echo "${CREATE_DMG_SHA256}  $TOOLS/create-dmg.tar.gz" | shasum -a 256 -c -
+          tar -xzf "$TOOLS/create-dmg.tar.gz" -C "$TOOLS"
+          echo "$TOOLS/minisign" >> "$GITHUB_PATH"
+          echo "$TOOLS/create-dmg-1.3.0" >> "$GITHUB_PATH"
 
       - name: Import Developer ID certificate
         env:

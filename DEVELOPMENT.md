@@ -62,6 +62,8 @@ The `Release` workflow builds, signs and notarizes the app and the DMG, signs th
 
 Sign a DMG only with `make sign-minisign`, because it writes the trusted comment that the updater requires.
 
+The workflow downloads fixed releases of `minisign` and `create-dmg` and checks them against the SHA-256 values in `release.yml`, because both tools run next to the signing secrets. To move to a newer release, verify the minisign archive with its `.minisig` and the upstream public key, then update the URL and the SHA-256 together.
+
 The workflow needs these repository secrets: `APPLE_DEVELOPER_ID_CERT_P12`, `APPLE_DEVELOPER_ID_CERT_PWD`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_SPECIFIC_PWD`, `MINISIGN_KEY`, `MINISIGN_KEY_PWD` and `HOMEBREW_TAP_TOKEN`.
 
 ## Private API
