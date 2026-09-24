@@ -26,11 +26,14 @@ enum WindowService {
     /// Windows of the app with the data the preview needs. Blocks on AX, so
     /// call it off the main actor. The preview does not run on the tap
     /// thread, so it waits as long as a window action for a busy app.
+    /// The windows are in alphabetical order of their titles.
     static func previewWindows(of pid: pid_t, includeOtherSpaces: Bool = false) -> [PreviewWindow] {
-        let current = windows(of: pid, timeout: AXElement.actionTimeout).map(previewWindow)
-        guard includeOtherSpaces else { return current }
-        let known = Set(current.compactMap(\.windowID))
-        return current + SpaceWindows.windows(of: pid, known: known).map(previewWindow)
+        var found = windows(of: pid, timeout: AXElement.actionTimeout).map(previewWindow)
+        if includeOtherSpaces {
+            let known = Set(found.compactMap(\.windowID))
+            found += SpaceWindows.windows(of: pid, known: known).map(previewWindow)
+        }
+        return WindowOrder.alphabetical(found, title: \.title, windowID: \.windowID)
     }
 
     private static func previewWindow(_ window: AppWindow) -> PreviewWindow {
