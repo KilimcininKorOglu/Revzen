@@ -9,12 +9,15 @@ final class DockScrollHandler: Sendable {
     private struct State {
         var stepper = ScrollStepper()
         var pid: pid_t?
+        var pending = PendingCycle<pid_t>()
     }
 
     private let dock: DockAX
     private let directory: AppDirectory
     private let state = Mutex(State())
-    /// One cycle at a time, in order, off the tap thread.
+    /// One cycle at a time, in order, off the tap thread. Steps that arrive
+    /// while a cycle waits merge into it, so a slow app does not collect a
+    /// queue of cycles that run after the scrolling ended.
     private let actions = DispatchQueue(label: "com.kilimcininkoroglu.revzen.scroll-actions", qos: .userInteractive)
 
     init(dock: DockAX, directory: AppDirectory) {
@@ -45,8 +48,16 @@ final class DockScrollHandler: Sendable {
         }
         if step != 0 {
             DebugLog.event(.scroll, "\(app.logName): delta=\(delta) continuous=\(continuous) -> step \(step)")
-            actions.async { WindowService.cycle(app.pid, step: step) }
+            enqueue(step, for: app.pid)
         }
         return true
+    }
+
+    private func enqueue(_ step: Int, for pid: pid_t) {
+        guard state.withLock({ $0.pending.add(step, for: pid) }) else { return }
+        actions.async { [self] in
+            guard let cycle = state.withLock({ $0.pending.take() }) else { return }
+            WindowService.cycle(cycle.target, step: cycle.step)
+        }
     }
 }

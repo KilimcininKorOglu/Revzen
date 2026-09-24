@@ -41,3 +41,36 @@ public struct ScrollStepper: Sendable {
         accumulated = 0
     }
 }
+
+/// Merges the scroll steps that arrive while a window cycle waits in the
+/// queue, so a slow app gets one cycle of the sum, not one cycle per step.
+public struct PendingCycle<Target: Equatable & Sendable>: Sendable {
+    private var target: Target?
+    private var step = 0
+    private var queued = false
+
+    public init() {}
+
+    /// Adds a step for `target`. Steps for another target replace the
+    /// pending ones. True when the caller must queue a job that calls `take`.
+    public mutating func add(_ step: Int, for target: Target) -> Bool {
+        if self.target != target {
+            self.target = target
+            self.step = 0
+        }
+        self.step += step
+        defer { queued = true }
+        return !queued
+    }
+
+    /// The merged step for the queued job, or nil when the steps cancel out.
+    public mutating func take() -> (target: Target, step: Int)? {
+        defer {
+            target = nil
+            step = 0
+            queued = false
+        }
+        guard let target, step != 0 else { return nil }
+        return (target, step)
+    }
+}

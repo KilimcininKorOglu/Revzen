@@ -57,3 +57,45 @@ struct ScrollStepperTests {
         #expect(stepper.add(15, continuous: true) == -1)
     }
 }
+
+@Suite("PendingCycle")
+struct PendingCycleTests {
+    @Test("Steps that arrive while a cycle waits merge into that one cycle")
+    func stepsMerge() throws {
+        var pending = PendingCycle<Int32>()
+        let queued = [pending.add(1, for: 7), pending.add(1, for: 7), pending.add(1, for: 7)]
+        #expect(queued == [true, false, false])
+        let taken = pending.take()
+        let cycle = try #require(taken)
+        #expect(cycle.target == 7 && cycle.step == 3)
+    }
+
+    @Test("After the job takes the steps, the next step queues a new job")
+    func takeEndsTheBatch() {
+        var pending = PendingCycle<Int32>()
+        _ = pending.add(1, for: 7)
+        _ = pending.take()
+        let queued = pending.add(-1, for: 7)
+        #expect(queued)
+    }
+
+    @Test("Steps in both directions cancel out, and the job does nothing")
+    func oppositeStepsCancel() {
+        var pending = PendingCycle<Int32>()
+        _ = pending.add(1, for: 7)
+        _ = pending.add(-1, for: 7)
+        let cycle = pending.take()
+        #expect(cycle == nil)
+    }
+
+    @Test("Steps over another app replace the waiting steps of the first app")
+    func otherTargetReplaces() throws {
+        var pending = PendingCycle<Int32>()
+        _ = pending.add(1, for: 7)
+        let queued = pending.add(-1, for: 9)
+        #expect(!queued)
+        let taken = pending.take()
+        let cycle = try #require(taken)
+        #expect(cycle.target == 9 && cycle.step == -1)
+    }
+}
