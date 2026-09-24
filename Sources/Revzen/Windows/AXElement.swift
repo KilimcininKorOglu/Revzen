@@ -34,12 +34,21 @@ struct AXElement: @unchecked Sendable, Hashable {
         hasher.combine(raw)
     }
 
+    /// The same element with another messaging timeout.
+    func withTimeout(_ timeout: Float) -> AXElement {
+        AXElement(raw, timeout: timeout)
+    }
+
     func value(_ attribute: String) -> CFTypeRef? {
         var value: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(raw, attribute as CFString, &value)
         return result == .success ? value : nil
     }
+}
 
+// MARK: - Typed reads and actions
+
+extension AXElement {
     func string(_ attribute: String) -> String? {
         value(attribute) as? String
     }

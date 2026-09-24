@@ -14,7 +14,7 @@ final class AppModel {
     var settings: RevzenSettings {
         didSet {
             guard settings != oldValue else { return }
-            directory.setExcluded(settings.excludedBundleIDs)
+            services?.setExcluded(settings.excludedBundleIDs)
             do {
                 try store.save(settings)
             } catch {
@@ -24,10 +24,7 @@ final class AppModel {
     }
 
     @ObservationIgnored private let store: SettingsStore
-    @ObservationIgnored private let directory = AppDirectory()
-    @ObservationIgnored private let dock = DockAX()
-    @ObservationIgnored private var workspaceObserver: WorkspaceObserver?
-    @ObservationIgnored private var eventTap: EventTap?
+    @ObservationIgnored private var services: DockServices?
 
     init(store: SettingsStore = SettingsStore()) {
         self.store = store
@@ -37,7 +34,6 @@ final class AppModel {
             settings = RevzenSettings()
             ErrorReporter.present("Revzen could not read the saved settings. The defaults are in use.", error: error)
         }
-        directory.setExcluded(settings.excludedBundleIDs)
     }
 
     func start() {
@@ -51,20 +47,19 @@ final class AppModel {
 
     func stop() {
         permissions.stopWaiting()
-        eventTap?.stop()
-        eventTap = nil
-        workspaceObserver?.invalidate()
-        workspaceObserver = nil
+        services?.stop()
+        services = nil
     }
 
     private func startServices() {
-        workspaceObserver = WorkspaceObserver(directory: directory, dock: dock)
-        let clicks = DockClickHandler(dock: dock, directory: directory)
-        let tap = EventTap(events: [.leftMouseDown, .leftMouseUp], handler: clicks.handle)
+        let services = DockServices(excludedBundleIDs: settings.excludedBundleIDs) { [weak self] in
+            .milliseconds(self?.settings.hoverDelayMs ?? RevzenSettings.defaultHoverDelayMs)
+        }
         do {
-            try tap.start()
-            eventTap = tap
+            try services.start()
+            self.services = services
         } catch {
+            services.stop()
             ErrorReporter.present("Revzen could not start Dock click handling", error: error)
         }
     }

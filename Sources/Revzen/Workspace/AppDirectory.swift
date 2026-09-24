@@ -81,7 +81,7 @@ final class AppDirectory: Sendable {
 final class WorkspaceObserver {
     private var tokens: [NSObjectProtocol] = []
 
-    init(directory: AppDirectory, dock: DockAX) {
+    init(directory: AppDirectory, dock: DockAX, onDockRelaunch: @escaping @MainActor () -> Void) {
         let workspace = NSWorkspace.shared
         directory.reload(from: workspace)
         dock.attach()
@@ -89,6 +89,7 @@ final class WorkspaceObserver {
         let didLaunch: @MainActor (NSRunningApplication) -> Void = { app in
             if app.bundleIdentifier == DockAX.bundleID {
                 dock.attach()
+                onDockRelaunch()
             }
             directory.didLaunch(app)
         }
