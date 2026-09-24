@@ -4,6 +4,22 @@ import Foundation
 /// Puts a verified app in place of the running one and relaunches it.
 @MainActor
 enum AppReplacer {
+    enum Failure: Error, LocalizedError {
+        /// The user cancelled the administrator password prompt.
+        case cancelled
+        case administratorCopy(String)
+
+        var errorDescription: String? {
+            switch self {
+            case .cancelled:
+                "The administrator password prompt was cancelled."
+            case .administratorCopy(let detail):
+                "Revzen could not copy the update into its folder, so the installed version is unchanged. "
+                    + "Try again, or install the update from the GitHub release page. (\(detail))"
+            }
+        }
+    }
+
     /// Replaces the running bundle, starts the new app once this process
     /// exits, then quits.
     static func installAndRelaunch(_ staged: URL) async throws {
@@ -46,7 +62,12 @@ enum AppReplacer {
             "end run"
         ]
         let arguments = script.flatMap { ["-e", $0] } + [swapScript, staged.path, target.path]
-        _ = try await ProcessRunner.run("/usr/bin/osascript", arguments)
+        do {
+            _ = try await ProcessRunner.run("/usr/bin/osascript", arguments)
+        } catch let failure as ProcessRunner.Failure {
+            // AppleScript reports a cancelled prompt as error -128.
+            throw failure.message.contains("(-128)") ? Failure.cancelled : Failure.administratorCopy(failure.message)
+        }
     }
 
     /// LaunchServices keeps a quitting app registered for a moment after its

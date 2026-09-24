@@ -157,10 +157,15 @@ extension UpdateService {
     }
 
     func installAndRelaunch() {
-        guard case .ready(let app, _) = state else { return }
+        guard case .ready(let app, let version) = state else { return }
         DebugLog.event(.update, "installing \(app.path) and relaunching")
-        perform("install") {
-            try await AppReplacer.installAndRelaunch(app)
+        perform("install") { [self] in
+            do {
+                try await AppReplacer.installAndRelaunch(app)
+            } catch AppReplacer.Failure.cancelled {
+                DebugLog.event(.update, "administrator prompt cancelled, \(version) stays ready to install")
+                state = .ready(app, version)
+            }
         }
     }
 
