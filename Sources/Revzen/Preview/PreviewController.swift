@@ -18,6 +18,7 @@ final class PreviewController {
 
     /// The icon the pending or shown preview belongs to.
     private var anchor: DockItem?
+    private var hoverState = HoverState<DockItem>()
     private var pending: Task<Void, Never>?
 
     init(
@@ -49,17 +50,31 @@ final class PreviewController {
         hide()
     }
 
+    /// The Dock menu of an icon opened. The preview hides and stays hidden
+    /// for that icon, as on Windows.
+    func dockMenuOpened() {
+        hoverState.menuOpened()
+        hide()
+    }
+
     private func hoverChanged(_ item: DockItem?) {
         pending?.cancel()
-        guard let item, let app = directory.app(forBundleURL: item.appURL), !directory.isExcluded(app) else {
-            // The pointer may be on its way into the panel. pointerMoved decides.
-            return
+        let inside = item.map { Self.pointerIsOver($0.frame) } ?? false
+        // Without a target the pointer may be on its way into the panel.
+        // pointerMoved decides.
+        if let target = hoverState.dockNotified(item, pointerInside: inside) {
+            schedule(target)
         }
+        updateTracking()
+    }
+
+    private func schedule(_ item: DockItem) {
+        guard let app = directory.app(forBundleURL: item.appURL), !directory.isExcluded(app) else { return }
         guard item != anchor || !panel.isVisible else { return }
         // Moving between icons with the panel open switches at once, as on Windows.
         let delay: Duration = panel.isVisible ? .zero : .milliseconds(settings().hoverDelayMs)
         anchor = item
-        pointer.setActive(true)
+        updateTracking()
         pending = Task { [weak self] in
             do {
                 try await Task.sleep(for: delay)
@@ -139,11 +154,18 @@ final class PreviewController {
 
     /// `point` is in top-left global coordinates, as the event tap reports it.
     private func pointerMoved(to point: CGPoint) {
-        guard let anchor else { return }
+        guard let anchor else {
+            // The Dock posts nothing for a return from the gap below or
+            // beside the icon, so the pointer position decides.
+            if let item = hoverState.pointerReturned(), Self.hitArea(item.frame).contains(point) {
+                schedule(item)
+            }
+            return
+        }
         let panelFrame = PanelPlacement.flipped(panel.frame, primaryScreenHeight: NSScreen.primaryHeight)
         // The union also covers the gap between the icon and the panel.
         let region = panel.isVisible ? anchor.frame.union(panelFrame) : anchor.frame
-        if !region.insetBy(dx: -2, dy: -2).contains(point) {
+        if !Self.hitArea(region).contains(point) {
             hide()
         }
     }
@@ -152,8 +174,26 @@ final class PreviewController {
         pending?.cancel()
         pending = nil
         anchor = nil
-        pointer.setActive(false)
+        updateTracking()
         panel.orderOut(nil)
+    }
+
+    /// Pointer moves matter while a preview is pending or shown, and while
+    /// the pointer is inside the Dock and may return to the hovered icon.
+    private func updateTracking() {
+        pointer.setActive(anchor != nil || hoverState.hovered != nil)
+    }
+
+    private static func hitArea(_ rect: CGRect) -> CGRect {
+        rect.insetBy(dx: -2, dy: -2)
+    }
+
+    private static func pointerIsOver(_ rect: CGRect) -> Bool {
+        let point = PanelPlacement.flipped(
+            CGRect(origin: NSEvent.mouseLocation, size: .zero),
+            primaryScreenHeight: NSScreen.primaryHeight
+        ).origin
+        return hitArea(rect).contains(point)
     }
 
     private static func screen(containing rect: CGRect) -> NSScreen? {
