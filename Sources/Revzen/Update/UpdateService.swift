@@ -43,6 +43,7 @@ final class UpdateService {
     /// change in Settings applies without a restart.
     func start(isAutoCheckEnabled: @escaping () -> Bool) {
         self.isAutoCheckEnabled = isAutoCheckEnabled
+        AppReplacer.reportLastRelaunch()
         Task.detached {
             do {
                 try UpdateInstaller.removeStaleDownloads()
