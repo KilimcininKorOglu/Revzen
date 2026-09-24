@@ -56,10 +56,15 @@ sign:
 
 run: app
 	@# open sends a reopen event to a process that is still exiting, and the
-	@# launch fails with procNotFound. Wait for the old instance to go first.
+	@# launch fails with procNotFound (-600). LaunchServices keeps the app
+	@# registered for a moment after the process exits, so wait for the
+	@# process and then retry open.
 	-pkill -x $(APP_NAME)
 	@while pgrep -x $(APP_NAME) >/dev/null; do sleep 0.1; done
-	open $(APP_BUNDLE)
+	@attempt=1; until open $(APP_BUNDLE) 2>/dev/null; do \
+		if [ $$attempt -ge 50 ]; then echo "open $(APP_BUNDLE) failed"; exit 1; fi; \
+		attempt=$$((attempt + 1)); sleep 0.2; \
+	done
 
 dmg:
 	rm -rf $(DIST_DIR) $(BUILD_DIR)/dmg-staging
