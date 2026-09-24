@@ -27,6 +27,20 @@ jobs:
             exit 1
           fi
 
+      # The release body is the tag's CHANGELOG section. Extracted first, so a
+      # missing section fails before the build and the notarization.
+      - name: Extract release notes from CHANGELOG
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          NOTES="${RUNNER_TEMP}/release-notes.md"
+          awk -v v="$VERSION" '$0 ~ "^## \\["v"\\]"{f=1;next} f&&/^## \[/{exit} f{print}' CHANGELOG.md > "$NOTES"
+          if [ ! -s "$NOTES" ]; then
+            echo "::error::CHANGELOG.md has no section for ${VERSION}"
+            exit 1
+          fi
+
       - name: Install minisign + create-dmg
         run: brew install minisign create-dmg
 
@@ -90,7 +104,7 @@ jobs:
           files: |
             dist/Revzen.dmg
             dist/Revzen.dmg.minisig
-          generate_release_notes: true
+          body_path: ${{ runner.temp }}/release-notes.md
           draft: false
           prerelease: false
 
