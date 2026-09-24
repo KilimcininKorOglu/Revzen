@@ -42,6 +42,7 @@ extension AXElement {
     func windowID() -> CGWindowID? {
         guard let getWindow = PrivateAX.functions.getWindow else { return nil }
         var id = CGWindowID(0)
+        applyTimeout()
         guard getWindow(raw, &id) == .success, id != 0 else { return nil }
         return id
     }

@@ -3,8 +3,10 @@ import ApplicationServices
 /// A Sendable wrapper for `AXUIElement`. The AX client API is safe to call
 /// from any thread, and the event tap thread needs these elements.
 ///
-/// A messaging timeout applies to one element only, so every element read
-/// from this one gets the same timeout.
+/// The messaging timeout is state of the shared `AXUIElement` object, and
+/// wrappers on two threads can hold the same object with different timeouts.
+/// So every AX call sets this wrapper's timeout right before it runs, and
+/// every element read from this one gets the same timeout.
 struct AXElement: @unchecked Sendable, Hashable {
     /// Timeout for reads on the event tap thread. A hung app must not stall
     /// the tap, which macOS disables after about one second.
@@ -19,7 +21,6 @@ struct AXElement: @unchecked Sendable, Hashable {
     init(_ raw: AXUIElement, timeout: Float = readTimeout) {
         self.raw = raw
         self.timeout = timeout
-        AXUIElementSetMessagingTimeout(raw, timeout)
     }
 
     static func application(_ pid: pid_t, timeout: Float = readTimeout) -> AXElement {
@@ -34,15 +35,22 @@ struct AXElement: @unchecked Sendable, Hashable {
         hasher.combine(raw)
     }
 
-    /// The same element with another messaging timeout.
+    /// The same element with another messaging timeout for its own calls.
     func withTimeout(_ timeout: Float) -> AXElement {
         AXElement(raw, timeout: timeout)
     }
 
     func value(_ attribute: String) -> CFTypeRef? {
         var value: CFTypeRef?
+        applyTimeout()
         let result = AXUIElementCopyAttributeValue(raw, attribute as CFString, &value)
         return result == .success ? value : nil
+    }
+
+    /// Sets this wrapper's timeout on the shared object. Call it before
+    /// every AX call on `raw`.
+    func applyTimeout() {
+        AXUIElementSetMessagingTimeout(raw, timeout)
     }
 }
 
@@ -86,16 +94,19 @@ extension AXElement {
 
     @discardableResult
     func set(_ attribute: String, _ value: Bool) -> AXError {
-        AXUIElementSetAttributeValue(raw, attribute as CFString, value as CFBoolean)
+        applyTimeout()
+        return AXUIElementSetAttributeValue(raw, attribute as CFString, value as CFBoolean)
     }
 
     @discardableResult
     func perform(_ action: String) -> AXError {
-        AXUIElementPerformAction(raw, action as CFString)
+        applyTimeout()
+        return AXUIElementPerformAction(raw, action as CFString)
     }
 
     func element(at point: CGPoint) -> AXElement? {
         var hit: AXUIElement?
+        applyTimeout()
         guard AXUIElementCopyElementAtPosition(raw, Float(point.x), Float(point.y), &hit) == .success,
             let hit
         else { return nil }
