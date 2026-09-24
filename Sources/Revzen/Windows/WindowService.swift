@@ -70,6 +70,17 @@ enum WindowService {
         )
     }
 
+    /// Closes a window by pressing its close button, as a user click would.
+    /// The app may still ask to save changes.
+    static func close(_ window: AppWindow) {
+        let element = window.element.withTimeout(AXElement.actionTimeout)
+        guard let button = element.element(kAXCloseButtonAttribute) else {
+            log.error("window of pid \(window.pid) has no close button")
+            return
+        }
+        report(button.perform(kAXPressAction), "close", window.pid)
+    }
+
     /// Minimizes (`true`) or restores (`false`) every window of the app that
     /// is not in that state yet. Activation is left to the caller.
     static func setAllMinimized(_ minimized: Bool, of pid: pid_t) {

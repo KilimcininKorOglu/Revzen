@@ -14,6 +14,7 @@ final class PreviewModel {
     var edge = DockEdge.bottom
 
     @ObservationIgnored var onSelect: (PreviewWindow) -> Void = { _ in }
+    @ObservationIgnored var onClose: (PreviewWindow) -> Void = { _ in }
 
     func image(for window: PreviewWindow) -> CGImage? {
         window.windowID.flatMap { images[$0] }
@@ -82,7 +83,8 @@ struct PreviewGrid: View {
                     image: model.image(for: window),
                     appIcon: model.appIcon,
                     imageSize: model.layout.imageSize,
-                    onSelect: { model.onSelect(window) }
+                    onSelect: { model.onSelect(window) },
+                    onClose: { model.onClose(window) }
                 )
             }
         }
@@ -97,6 +99,7 @@ private struct PreviewTile: View {
     let appIcon: NSImage
     let imageSize: CGSize
     let onSelect: () -> Void
+    let onClose: () -> Void
 
     @State private var isHovered = false
 
@@ -104,6 +107,11 @@ private struct PreviewTile: View {
         VStack(spacing: 4) {
             thumbnail
                 .frame(width: imageSize.width, height: imageSize.height)
+                .overlay(alignment: .topTrailing) {
+                    if isHovered {
+                        CloseButton(action: onClose)
+                    }
+                }
             Text(window.title.isEmpty ? " " : window.title)
                 .font(.caption)
                 .foregroundStyle(isHovered ? .primary : .secondary)
@@ -119,6 +127,7 @@ private struct PreviewTile: View {
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .onTapGesture(perform: onSelect)
+        .overlay { MiddleClickCatcher(action: onClose) }
         .help(window.title)
     }
 
@@ -135,6 +144,52 @@ private struct PreviewTile: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(width: min(64, imageSize.height * 0.6))
                 .opacity(0.8)
+        }
+    }
+}
+
+/// The "x" in the corner of a hovered tile.
+private struct CloseButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "xmark.circle.fill")
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(.primary, .regularMaterial)
+                .font(.system(size: 18))
+        }
+        .buttonStyle(.plain)
+        .help("Close Window")
+        .padding(4)
+    }
+}
+
+/// Catches middle clicks on a tile. SwiftUI has no gesture for the middle
+/// button, so an AppKit view takes the hit test for that button only and
+/// lets every other event reach the SwiftUI views below it.
+private struct MiddleClickCatcher: NSViewRepresentable {
+    let action: () -> Void
+
+    func makeNSView(context: Context) -> CatcherView {
+        CatcherView()
+    }
+
+    func updateNSView(_ view: CatcherView, context: Context) {
+        view.action = action
+    }
+
+    final class CatcherView: NSView {
+        var action: () -> Void = {}
+
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            NSApp.currentEvent?.type == .otherMouseDown ? super.hitTest(point) : nil
+        }
+
+        override func otherMouseDown(with event: NSEvent) {
+            // Button 2 is the middle button. Other extra buttons are ignored.
+            guard event.buttonNumber == 2 else { return super.otherMouseDown(with: event) }
+            action()
         }
     }
 }

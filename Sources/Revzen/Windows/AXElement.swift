@@ -58,9 +58,11 @@ extension AXElement {
     }
 
     func url(_ attribute: String) -> URL? {
-        guard let value = value(attribute), CFGetTypeID(value) == CFURLGetTypeID() else { return nil }
-        // The type ID check above makes this cast safe.
-        return (value as! CFURL) as URL // swiftlint:disable:this force_cast
+        value(attribute, typeID: CFURLGetTypeID(), as: CFURL.self).map { $0 as URL }
+    }
+
+    func element(_ attribute: String) -> AXElement? {
+        value(attribute, typeID: AXUIElementGetTypeID(), as: AXUIElement.self).map { AXElement($0, timeout: timeout) }
     }
 
     func elements(_ attribute: String) -> [AXElement] {
@@ -69,11 +71,17 @@ extension AXElement {
     }
 
     func frame() -> CGRect? {
-        guard let value = value("AXFrame"), CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
+        guard let value = value("AXFrame", typeID: AXValueGetTypeID(), as: AXValue.self) else { return nil }
         var rect = CGRect.zero
-        // The type ID check above makes this cast safe.
-        guard AXValueGetValue(value as! AXValue, .cgRect, &rect) else { return nil } // swiftlint:disable:this force_cast
-        return rect
+        return AXValueGetValue(value, .cgRect, &rect) ? rect : nil
+    }
+
+    /// The attribute value when its CoreFoundation type ID is `typeID`.
+    /// CoreFoundation types do not support `as?`, and the type ID check makes
+    /// the bit cast safe.
+    private func value<T>(_ attribute: String, typeID: CFTypeID, as type: T.Type) -> T? {
+        guard let value = value(attribute), CFGetTypeID(value) == typeID else { return nil }
+        return unsafeBitCast(value, to: type)
     }
 
     @discardableResult

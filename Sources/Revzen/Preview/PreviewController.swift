@@ -25,6 +25,7 @@ final class PreviewController {
         self.directory = directory
         self.hoverDelay = hoverDelay
         model.onSelect = { [weak self] window in self?.select(window) }
+        model.onClose = { [weak self] window in self?.close(window) }
     }
 
     func start() {
@@ -77,8 +78,11 @@ final class PreviewController {
             edge: edge,
             available: edge.isVertical ? screen.cgFrame.height : screen.cgFrame.width
         )
+        // Images of windows that are still listed stay until the new capture
+        // arrives, so a refresh after a close does not flicker.
+        let ids = Set(windows.compactMap(\.windowID))
+        model.images = model.images.filter { ids.contains($0.key) }
         model.windows = windows
-        model.images = [:]
         model.edge = edge
         model.layout = layout
         model.appIcon = NSWorkspace.shared.icon(forFile: app.bundleURL.path)
@@ -91,7 +95,7 @@ final class PreviewController {
         let ids = windows.filter { !$0.window.isMinimized }.compactMap(\.windowID)
         let images = await capture.capture(ids, maxPointSize: PreviewLayout.maxImageSize, scale: scale)
         guard !Task.isCancelled, model.windows == windows else { return }
-        model.images = images
+        model.images.merge(images) { _, new in new }
     }
 
     private func place(_ size: CGSize, anchor: DockItem, edge: DockEdge, screen: NSScreen) {
@@ -102,6 +106,24 @@ final class PreviewController {
     private func select(_ window: PreviewWindow) {
         hide()
         Task.detached { WindowService.focus(window.window) }
+    }
+
+    /// Closes the window, then lists the app's windows again. The list is
+    /// read back instead of edited, because the app can refuse the close,
+    /// for example with a save dialog.
+    private func close(_ window: PreviewWindow) {
+        guard let anchor, let app = directory.app(forBundleURL: anchor.appURL) else { return }
+        pending?.cancel()
+        pending = Task { [weak self] in
+            await Task.detached { WindowService.close(window.window) }.value
+            do {
+                // The app removes the window from its AX list shortly after the press.
+                try await Task.sleep(for: .milliseconds(250))
+            } catch {
+                return
+            }
+            await self?.show(app, for: anchor)
+        }
     }
 
     /// `point` is in top-left global coordinates, as the event tap reports it.
