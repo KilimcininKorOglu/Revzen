@@ -29,13 +29,18 @@ final class DockServices {
         let clicks = DockClickHandler(dock: dock, directory: directory) { pid in
             await snapshots.snapshot(pid: pid)
         }
+        let scrolls = DockScrollHandler(dock: dock, directory: directory)
         let pointer = preview.pointer
-        let tap = EventTap(events: [.leftMouseDown, .leftMouseUp, .mouseMoved]) { type, event in
-            if type == .mouseMoved {
+        let tap = EventTap(events: [.leftMouseDown, .leftMouseUp, .mouseMoved, .scrollWheel]) { type, event in
+            switch type {
+            case .mouseMoved:
                 pointer.moved(to: event.location)
                 return false
+            case .scrollWheel:
+                return scrolls.handle(event)
+            default:
+                return clicks.handle(type, event)
             }
-            return clicks.handle(type, event)
         }
         try tap.start()
         eventTap = tap
