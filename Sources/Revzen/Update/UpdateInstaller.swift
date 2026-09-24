@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import RevzenCore
 import Security
@@ -87,12 +86,9 @@ enum UpdateInstaller {
 
 extension UpdateInstaller {
     static func verifyDigest(of data: Data, expected: String) throws {
-        let actual = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-        guard actual == expected else { throw UpdateFailure.digestMismatch }
+        guard ReleaseVerification.digestMatches(data, sha256Hex: expected) else { throw UpdateFailure.digestMismatch }
     }
 
-    /// The release pipeline signs with the trusted comment `Revzen <version>`,
-    /// so an older signed DMG cannot pass as a newer release.
     static func verifySignature(of data: Data, signatureFile: URL, version: SemanticVersion) throws {
         let text = try String(contentsOf: signatureFile, encoding: .utf8)
         let comment: String
@@ -102,7 +98,9 @@ extension UpdateInstaller {
         } catch let failure as Minisign.Failure {
             throw UpdateFailure.signature(failure)
         }
-        guard comment == "\(AppInfo.name) \(version)" else { throw UpdateFailure.wrongTrustedComment(comment) }
+        guard comment == ReleaseVerification.trustedComment(appName: AppInfo.name, version: version) else {
+            throw UpdateFailure.wrongTrustedComment(comment)
+        }
     }
 }
 
@@ -137,9 +135,7 @@ enum DiskImage {
     }
 
     private static func mountPoint(in plist: Data) throws -> URL {
-        let root = try PropertyListSerialization.propertyList(from: plist, format: nil) as? [String: Any]
-        let entities = root?["system-entities"] as? [[String: Any]] ?? []
-        guard let path = entities.lazy.compactMap({ $0["mount-point"] as? String }).first else {
+        guard let path = try ReleaseVerification.mountPoint(inHdiutilPlist: plist) else {
             throw UpdateFailure.mountPointMissing
         }
         return URL(fileURLWithPath: path, isDirectory: true)
@@ -148,17 +144,17 @@ enum DiskImage {
 
 /// Checks the staged app before it replaces the running one.
 enum CodeCheck {
-    static let requirement =
-        "anchor apple generic and certificate leaf[subject.OU] = \"\(AppInfo.teamID)\" and notarized"
+    static let requirement = ReleaseVerification.codeRequirement(teamID: AppInfo.teamID)
 
     static func verify(app: URL, version: SemanticVersion) throws {
-        guard let bundle = Bundle(url: app), bundle.bundleIdentifier == AppInfo.bundleID else {
-            throw UpdateFailure.wrongApp("bundle ID is not \(AppInfo.bundleID)")
-        }
-        let shortVersion = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        guard shortVersion.flatMap(SemanticVersion.init) == version else {
-            throw UpdateFailure.wrongApp("version \(shortVersion ?? "none") is not \(version)")
-        }
+        let bundle = Bundle(url: app)
+        let problem = ReleaseVerification.bundleProblem(
+            bundleID: bundle?.bundleIdentifier,
+            shortVersion: bundle?.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+            expectedBundleID: AppInfo.bundleID,
+            expectedVersion: version
+        )
+        if let problem { throw UpdateFailure.wrongApp(problem) }
         try checkSignature(of: app)
     }
 

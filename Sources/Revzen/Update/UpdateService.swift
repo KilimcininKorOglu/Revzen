@@ -109,7 +109,7 @@ extension UpdateService {
     }
 
     private func apply(_ release: GitHubRelease, manual: Bool) {
-        guard let latest = release.version, let current = AppInfo.version, latest > current else {
+        guard ReleaseVerification.isNewer(release.version, than: AppInfo.version), let latest = release.version else {
             DebugLog.event(.update, "latest release \(release.tagName), up to date")
             state = manual ? .upToDate : .idle
             return

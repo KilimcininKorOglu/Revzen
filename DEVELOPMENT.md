@@ -14,7 +14,7 @@ This document covers building, testing and releasing Revzen. For installation an
 
 The project is a Swift package with two targets:
 
-- `RevzenCore` holds the decision logic without AppKit, Accessibility or ScreenCaptureKit code: click policy, hover state, window order, panel placement, settings, version parsing, update schedule and minisign verification. Its tests are in `Tests/RevzenCoreTests` and use Swift Testing.
+- `RevzenCore` holds the decision logic without AppKit, Accessibility or ScreenCaptureKit code: click policy, hover state, window order, panel placement, settings, version parsing, update schedule, minisign verification and the release verification rules. Its tests are in `Tests/RevzenCoreTests` and use Swift Testing.
 - `Revzen` is the menu bar app. It reads the system state, asks `RevzenCore` for the decision and performs the action.
 
 ## Building and testing
@@ -47,6 +47,8 @@ Before a new version replaces the running app, the updater checks:
 2. The minisign signature of the DMG against the release public key (`Resources/minisign.pub`, also compiled into the app as `AppInfo.minisignPublicKey`). Only prehashed `ED` signatures are accepted. The trusted comment must be `Revzen <version>`, so an older signed DMG cannot pass as a newer release.
 3. The bundle ID and the version of the app in the DMG.
 4. The code signature: Developer ID of team `5U4P8ULV68` and a notarization ticket.
+
+The decisions of these checks, and the rule that only a newer release is offered, are in `ReleaseVerification` in `RevzenCore`, with tests in `ReleaseVerificationTests`. The app target only reads the files, mounts the image and runs `SecStaticCodeCheckValidity`.
 
 Downloads stay in `~/Library/Caches/Revzen/updates` and are deleted after seven days.
 
