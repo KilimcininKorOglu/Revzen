@@ -12,6 +12,7 @@ struct SettingsView: View {
             ExcludedAppsSection(excluded: $model.settings.excludedBundleIDs)
             PermissionsSection(permissions: model.permissions)
             UpdatesSection(autoCheck: $model.settings.autoCheckUpdates, updates: model.updates)
+            DiagnosticsSection(debugLogging: $model.settings.debugLogging)
             AboutSection()
         }
         .formStyle(.grouped)

@@ -15,6 +15,8 @@ final class AppModel {
     var settings: RevzenSettings {
         didSet {
             guard settings != oldValue else { return }
+            DebugLog.setEnabled(settings.debugLogging)
+            DebugLog.event(.settings, "changed: \(settings.logDescription)")
             services?.setExcluded(settings.excludedBundleIDs)
             do {
                 try store.save(settings)
@@ -37,6 +39,8 @@ final class AppModel {
             settings = RevzenSettings()
             ErrorReporter.present("Revzen could not read the saved settings. The defaults are in use.", error: error)
         }
+        DebugLog.setEnabled(settings.debugLogging)
+        DebugLog.event(.settings, "loaded: \(settings.logDescription)")
     }
 
     func start() {
@@ -85,7 +89,7 @@ extension AppModel {
 @MainActor
 enum ErrorReporter {
     static func present(_ message: String, error: Error) {
-        log.error("\(message, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        DebugLog.error(.app, "\(message): \(error.localizedDescription)")
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = message

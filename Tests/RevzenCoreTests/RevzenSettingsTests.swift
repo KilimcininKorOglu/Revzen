@@ -19,6 +19,7 @@ struct RevzenSettingsTests {
         #expect(settings.excludedBundleIDs.isEmpty)
         #expect(settings.showOtherSpaces == false)
         #expect(settings.autoCheckUpdates)
+        #expect(settings.debugLogging == false)
     }
 
     @Test("Saved settings survive a relaunch")
@@ -28,7 +29,8 @@ struct RevzenSettingsTests {
             hoverDelayMs: 750,
             excludedBundleIDs: ["com.apple.Terminal"],
             showOtherSpaces: true,
-            autoCheckUpdates: false
+            autoCheckUpdates: false,
+            debugLogging: true
         )
         try store.save(saved)
         #expect(try store.load() == saved)
@@ -52,13 +54,14 @@ struct RevzenSettingsTests {
         #expect(try store.load().hoverDelayMs == 0)
     }
 
-    @Test("Settings saved before the update check existed turn the automatic check on")
+    @Test("Settings saved by an older build get the automatic check on and debug logging off")
     func olderSettingsEnableAutoCheck() throws {
         let (store, defaults) = makeStore()
         let json = #"{"hoverDelayMs":300,"excludedBundleIDs":["com.apple.Terminal"],"showOtherSpaces":true}"#
         defaults.set(Data(json.utf8), forKey: SettingsStore.key)
         let settings = try store.load()
         #expect(settings.autoCheckUpdates)
+        #expect(settings.debugLogging == false)
         #expect(settings.hoverDelayMs == 300)
     }
 

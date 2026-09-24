@@ -16,17 +16,21 @@ public struct RevzenSettings: Codable, Sendable, Equatable {
     public var showOtherSpaces: Bool
     /// Check GitHub for a new release in the background once a day.
     public var autoCheckUpdates: Bool
+    /// Write every Dock, pointer, preview and window event to the debug log.
+    public var debugLogging: Bool
 
     public init(
         hoverDelayMs: Int = RevzenSettings.defaultHoverDelayMs,
         excludedBundleIDs: Set<String> = [],
         showOtherSpaces: Bool = false,
-        autoCheckUpdates: Bool = true
+        autoCheckUpdates: Bool = true,
+        debugLogging: Bool = false
     ) {
         self.hoverDelayMs = Self.clampedDelay(hoverDelayMs)
         self.excludedBundleIDs = excludedBundleIDs
         self.showOtherSpaces = showOtherSpaces
         self.autoCheckUpdates = autoCheckUpdates
+        self.debugLogging = debugLogging
     }
 
     public init(from decoder: Decoder) throws {
@@ -36,7 +40,8 @@ public struct RevzenSettings: Codable, Sendable, Equatable {
             excludedBundleIDs: try container.decode(Set<String>.self, forKey: .excludedBundleIDs),
             showOtherSpaces: try container.decode(Bool.self, forKey: .showOtherSpaces),
             // Settings saved before 1.0.0 have no such field.
-            autoCheckUpdates: try container.decodeIfPresent(Bool.self, forKey: .autoCheckUpdates) ?? true
+            autoCheckUpdates: try container.decodeIfPresent(Bool.self, forKey: .autoCheckUpdates) ?? true,
+            debugLogging: try container.decodeIfPresent(Bool.self, forKey: .debugLogging) ?? false
         )
     }
 

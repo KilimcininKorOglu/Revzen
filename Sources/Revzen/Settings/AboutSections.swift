@@ -26,6 +26,36 @@ struct UpdatesSection: View {
     }
 }
 
+/// The debug log switch, for reporting a problem.
+struct DiagnosticsSection: View {
+    @Binding var debugLogging: Bool
+
+    var body: some View {
+        Section("Diagnostics") {
+            Toggle(isOn: $debugLogging) {
+                Text("Debug logging")
+                Text("Writes every Dock click, hover, scroll and window action to \(logPath).")
+            }
+            LabeledContent("Log file") {
+                Button("Show in Finder", action: showLog)
+            }
+        }
+    }
+
+    private var logPath: String {
+        (DebugLog.fileURL.path as NSString).abbreviatingWithTildeInPath
+    }
+
+    private func showLog() {
+        let file = DebugLog.fileURL
+        if FileManager.default.fileExists(atPath: file.path) {
+            NSWorkspace.shared.activateFileViewerSelecting([file])
+        } else {
+            ErrorReporter.present("There is no debug log yet", error: CocoaError(.fileNoSuchFile))
+        }
+    }
+}
+
 struct AboutSection: View {
     var body: some View {
         Section("About") {
