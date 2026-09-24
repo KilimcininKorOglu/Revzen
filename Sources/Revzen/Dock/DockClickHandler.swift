@@ -35,7 +35,8 @@ final class DockClickHandler: Sendable {
         switch type {
         case .leftMouseDown where event.flags.contains(.maskControl), .rightMouseDown:
             // Control-click and right click open the Dock menu. The Dock keeps the click.
-            if dock.appItem(at: event.location) != nil {
+            if let item = dock.appItem(at: event.location) {
+                DebugLog.event(.click, "menu click on \(item.logName) at \(event.location.logText), preview hides")
                 onMenuClick()
             }
             return false
@@ -44,25 +45,39 @@ final class DockClickHandler: Sendable {
             swallowNextUp.store(swallow, ordering: .relaxed)
             return swallow
         case .leftMouseUp:
-            return swallowNextUp.exchange(false, ordering: .relaxed)
+            let swallow = swallowNextUp.exchange(false, ordering: .relaxed)
+            if swallow {
+                DebugLog.event(.click, "mouse up swallowed with its mouse down")
+            }
+            return swallow
         default:
             return false
         }
     }
+}
 
+extension DockClickHandler {
     private func handleMouseDown(_ event: CGEvent) -> Bool {
+        guard let item = dock.appItem(at: event.location) else { return false }
         // Modified clicks keep their Dock meaning, for example
         // Command-click reveals the app in Finder.
-        guard event.flags.isDisjoint(with: .revzenModifiers),
-              let item = dock.appItem(at: event.location),
-              let app = directory.app(forBundleURL: item.appURL) else { return false }
+        guard event.flags.isDisjoint(with: .revzenModifiers) else {
+            DebugLog.event(.click, "\(item.logName): modified click, the Dock handles it")
+            return false
+        }
+        guard let app = directory.app(forBundleURL: item.appURL) else {
+            DebugLog.event(.click, "\(item.logName): not running, the Dock launches it")
+            return false
+        }
         let excluded = directory.isExcluded(app)
         let isFrontmost = directory.isFrontmost(app.pid)
         // The AX read is skipped when the answer cannot change the action.
         let focused = !excluded && isFrontmost ? WindowService.focusedWindow(of: app.pid) : nil
         let state = AppWindowState(isFrontmost: isFrontmost, hasFocusedWindow: focused != nil)
-        guard ClickPolicy.action(for: state, isExcluded: excluded) == .minimizeFocused,
-              let focused else { return false }
+        let action = ClickPolicy.action(for: state, isExcluded: excluded)
+        DebugLog.event(.click, "\(app.logName): frontmost=\(isFrontmost) excluded=\(excluded) "
+            + "focusedWindow=\(focused != nil) -> \(action)")
+        guard action == .minimizeFocused, let focused else { return false }
         let pid = app.pid
         Task { [beforeMinimize, actions] in
             await beforeMinimize(pid)

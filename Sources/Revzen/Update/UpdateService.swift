@@ -84,6 +84,7 @@ extension UpdateService {
             return
         }
         state = .checking
+        DebugLog.event(.update, "checking GitHub (\(manual ? "manual" : "scheduled"))")
         if manual { onPresent?() }
         // Stored before the request, so a failing network does not turn the
         // hourly poll into an hourly request.
@@ -93,16 +94,18 @@ extension UpdateService {
         do {
             apply(try await UpdateChecker.latestRelease(), manual: manual)
         } catch {
-            log.error("Update check failed: \(error.localizedDescription, privacy: .public)")
+            DebugLog.error(.update, "update check failed: \(error.localizedDescription)")
             state = manual ? .failed(error.localizedDescription) : .idle
         }
     }
 
     private func apply(_ release: GitHubRelease, manual: Bool) {
         guard let latest = release.version, let current = AppInfo.version, latest > current else {
+            DebugLog.event(.update, "latest release \(release.tagName), up to date")
             state = manual ? .upToDate : .idle
             return
         }
+        DebugLog.event(.update, "\(latest) is available")
         state = .available(release, latest)
         if !manual { onPresent?() }
     }
@@ -118,7 +121,7 @@ extension UpdateService {
                 let app = try await UpdateInstaller.prepare(release, version: version)
                 state = .ready(app, version)
             } catch {
-                log.error("Update download failed: \(error.localizedDescription, privacy: .public)")
+                DebugLog.error(.update, "update download failed: \(error.localizedDescription)")
                 state = .failed(error.localizedDescription)
             }
         }
@@ -130,7 +133,7 @@ extension UpdateService {
             do {
                 try await AppReplacer.installAndRelaunch(app)
             } catch {
-                log.error("Update install failed: \(error.localizedDescription, privacy: .public)")
+                DebugLog.error(.update, "update install failed: \(error.localizedDescription)")
                 state = .failed(error.localizedDescription)
             }
         }

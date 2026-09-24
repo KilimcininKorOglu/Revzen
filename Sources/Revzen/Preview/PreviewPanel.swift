@@ -109,7 +109,7 @@ private struct PreviewTile: View {
                 .frame(width: imageSize.width, height: imageSize.height)
                 .overlay(alignment: .topTrailing) {
                     if isHovered {
-                        CloseButton(action: onClose)
+                        CloseButton(action: closeClicked)
                     }
                 }
             Text(window.title.isEmpty ? " " : window.title)
@@ -125,9 +125,9 @@ private struct PreviewTile: View {
                 .padding(-4)
         }
         .contentShape(Rectangle())
-        .onHover { isHovered = $0 }
-        .onTapGesture(perform: onSelect)
-        .overlay { MiddleClickCatcher(action: onClose) }
+        .onHover(perform: hoverChanged)
+        .onTapGesture(perform: clicked)
+        .overlay { MiddleClickCatcher(action: middleClicked) }
         .help(window.title)
     }
 
@@ -145,6 +145,30 @@ private struct PreviewTile: View {
                 .frame(width: min(64, imageSize.height * 0.6))
                 .opacity(0.8)
         }
+    }
+}
+
+extension PreviewTile {
+    private func hoverChanged(_ hovering: Bool) {
+        isHovered = hovering
+        if hovering {
+            DebugLog.event(.preview, "tile hovered: \(window.logName)")
+        }
+    }
+
+    private func clicked() {
+        DebugLog.event(.preview, "tile clicked: \(window.logName)")
+        onSelect()
+    }
+
+    private func closeClicked() {
+        DebugLog.event(.preview, "close button on \(window.logName)")
+        onClose()
+    }
+
+    private func middleClicked() {
+        DebugLog.event(.preview, "middle click on \(window.logName)")
+        onClose()
     }
 }
 

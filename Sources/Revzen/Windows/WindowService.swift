@@ -94,7 +94,12 @@ extension WindowService {
         let app = AXElement.application(pid, timeout: AXElement.actionTimeout)
         let focused = app.element(kAXFocusedWindowAttribute)
         let current = windows.firstIndex { $0.window.element == focused }
-        guard let next = WindowCycler.next(count: windows.count, current: current, step: step) else { return }
+        guard let next = WindowCycler.next(count: windows.count, current: current, step: step) else {
+            DebugLog.event(.window, "cycle pid \(pid): no window to switch to (\(windows.count) windows)")
+            return
+        }
+        DebugLog.event(.window, "cycle pid \(pid): \(current.map(String.init) ?? "none") -> \(next) "
+            + "of \(windows.count), \(windows[next].logName)")
         focus(windows[next].window)
     }
 
@@ -103,7 +108,7 @@ extension WindowService {
     static func close(_ window: AppWindow) {
         let element = window.element.withTimeout(AXElement.actionTimeout)
         guard let button = element.element(kAXCloseButtonAttribute) else {
-            log.error("window of pid \(window.pid) has no close button")
+            DebugLog.error(.window, "window of pid \(window.pid) has no close button")
             return
         }
         report(button.perform(kAXPressAction), "close", window.pid)
@@ -114,8 +119,10 @@ extension WindowService {
     }
 
     private static func report(_ result: AXError, _ action: String, _ pid: pid_t) {
-        if result != .success {
-            log.error("AX \(action, privacy: .public) failed for pid \(pid): \(result.rawValue)")
+        guard result == .success else {
+            DebugLog.error(.window, "AX \(action) failed for pid \(pid): AXError \(result.rawValue)")
+            return
         }
+        DebugLog.event(.window, "AX \(action) pid \(pid): ok")
     }
 }

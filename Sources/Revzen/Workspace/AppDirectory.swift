@@ -87,16 +87,26 @@ final class WorkspaceObserver {
         dock.attach()
         let center = workspace.notificationCenter
         let didLaunch: @MainActor (NSRunningApplication) -> Void = { app in
+            DebugLog.event(.workspace, "launched \(app.logName)")
             if app.bundleIdentifier == DockAX.bundleID {
+                DebugLog.event(.workspace, "the Dock relaunched")
                 dock.attach()
                 onDockRelaunch()
             }
             directory.didLaunch(app)
         }
+        let didTerminate: @MainActor (NSRunningApplication) -> Void = { app in
+            DebugLog.event(.workspace, "terminated \(app.logName)")
+            directory.didTerminate(app)
+        }
+        let didActivate: @MainActor (NSRunningApplication) -> Void = { app in
+            DebugLog.event(.workspace, "activated \(app.logName)")
+            directory.didActivate(app)
+        }
         let handlers: [(Notification.Name, @MainActor (NSRunningApplication) -> Void)] = [
             (NSWorkspace.didLaunchApplicationNotification, didLaunch),
-            (NSWorkspace.didTerminateApplicationNotification, directory.didTerminate),
-            (NSWorkspace.didActivateApplicationNotification, directory.didActivate)
+            (NSWorkspace.didTerminateApplicationNotification, didTerminate),
+            (NSWorkspace.didActivateApplicationNotification, didActivate)
         ]
         tokens = handlers.map { name, handler in
             center.addObserver(forName: name, object: nil, queue: .main) { note in

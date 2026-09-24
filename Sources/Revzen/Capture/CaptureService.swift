@@ -13,7 +13,7 @@ actor CaptureService {
         do {
             content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
         } catch {
-            log.error("listing shareable windows failed: \(error.localizedDescription, privacy: .public)")
+            DebugLog.error(.capture, "listing shareable windows failed: \(error.localizedDescription)")
             return [:]
         }
         let wanted = Set(ids)
@@ -23,6 +23,9 @@ actor CaptureService {
                 images[window.windowID] = image
             }
         }
+        let missing = wanted.subtracting(images.keys).sorted()
+        DebugLog.event(.capture, "captured \(images.count) of \(ids.count) windows"
+            + (missing.isEmpty ? "" : ", no image for \(missing)"))
         return images
     }
 
@@ -39,7 +42,7 @@ actor CaptureService {
                 configuration: config
             )
         } catch {
-            log.error("capture of window \(window.windowID) failed: \(error.localizedDescription, privacy: .public)")
+            DebugLog.error(.capture, "capture of window \(window.windowID) failed: \(error.localizedDescription)")
             return nil
         }
     }

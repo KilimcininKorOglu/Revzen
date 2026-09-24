@@ -19,23 +19,24 @@ final class DockHoverObserver {
     func start() {
         stop()
         guard let pid = dock.pid, let list = dock.iconList() else {
-            log.error("the Dock icon list is not available, hover previews are off")
+            DebugLog.error(.hover, "the Dock icon list is not available, hover previews are off")
             return
         }
         var created: AXObserver?
         guard AXObserverCreate(pid, dockHoverCallback, &created) == .success, let created else {
-            log.error("creating the Dock AX observer failed")
+            DebugLog.error(.hover, "creating the Dock AX observer failed")
             return
         }
         let refcon = Unmanaged.passUnretained(self).toOpaque()
         let result = AXObserverAddNotification(created, list.raw, kAXSelectedChildrenChangedNotification as CFString, refcon)
         guard result == .success else {
-            log.error("observing Dock hover failed: \(result.rawValue)")
+            DebugLog.error(.hover, "observing Dock hover failed: AXError \(result.rawValue)")
             return
         }
         CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(created), .commonModes)
         observer = created
         self.list = list
+        DebugLog.event(.hover, "observing Dock hover, pid \(pid)")
     }
 
     func stop() {
@@ -49,6 +50,7 @@ final class DockHoverObserver {
 
     fileprivate func selectionChanged() {
         let hovered = list?.elements(kAXSelectedChildrenAttribute).first.flatMap(DockAX.appItem(from:))
+        DebugLog.event(.hover, "Dock selection: \(hovered?.logName ?? "none")")
         onHover(hovered)
     }
 }

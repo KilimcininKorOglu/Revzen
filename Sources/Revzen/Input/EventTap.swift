@@ -89,7 +89,7 @@ final class EventTap: Sendable {
         guard let refcon else { return Unmanaged.passUnretained(event) }
         let context = Unmanaged<Context>.fromOpaque(refcon).takeUnretainedValue()
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            log.error("event tap disabled by the system (\(type.rawValue)), enabling it again")
+            DebugLog.error(.app, "event tap disabled by the system (\(type.rawValue)), enabling it again")
             if let port = context.port {
                 CGEvent.tapEnable(tap: port, enable: true)
             }

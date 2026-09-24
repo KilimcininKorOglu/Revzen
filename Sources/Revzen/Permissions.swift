@@ -14,8 +14,12 @@ final class Permissions {
     @ObservationIgnored private var pollTask: Task<Void, Never>?
 
     func refresh() {
-        accessibility = AXIsProcessTrusted()
-        screenRecording = CGPreflightScreenCaptureAccess()
+        let (newAccessibility, newScreenRecording) = (AXIsProcessTrusted(), CGPreflightScreenCaptureAccess())
+        if (newAccessibility, newScreenRecording) != (accessibility, screenRecording) {
+            DebugLog.event(.app, "permissions: accessibility=\(newAccessibility) screenRecording=\(newScreenRecording)")
+        }
+        accessibility = newAccessibility
+        screenRecording = newScreenRecording
     }
 
     func requestAccessibility() {

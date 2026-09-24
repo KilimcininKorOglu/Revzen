@@ -41,20 +41,20 @@ final class PreviewController {
 
     /// Re-registers the hover observer with a relaunched Dock.
     func dockRelaunched() {
-        hide()
+        hide(reason: "the Dock relaunched")
         hover.start()
     }
 
     func stop() {
         hover.stop()
-        hide()
+        hide(reason: "services stopped")
     }
 
     /// The Dock menu of an icon opened. The preview hides and stays hidden
     /// for that icon, as on Windows.
     func dockMenuOpened() {
         hoverState.menuOpened()
-        hide()
+        hide(reason: "the Dock menu opened")
     }
 
     private func hoverChanged(_ item: DockItem?) {
@@ -62,17 +62,27 @@ final class PreviewController {
         let inside = item.map { Self.pointerIsOver($0.frame) } ?? false
         // Without a target the pointer may be on its way into the panel.
         // pointerMoved decides.
-        if let target = hoverState.dockNotified(item, pointerInside: inside) {
+        let target = hoverState.dockNotified(item, pointerInside: inside)
+        DebugLog.event(.hover, "\(item?.logName ?? "none") pointerInside=\(inside) -> "
+            + (target.map { "preview \($0.logName)" } ?? "no preview, the pointer decides"))
+        if let target {
             schedule(target)
         }
         updateTracking()
     }
 
     private func schedule(_ item: DockItem) {
-        guard let app = directory.app(forBundleURL: item.appURL), !directory.isExcluded(app) else { return }
-        guard item != anchor || !panel.isVisible else { return }
+        guard let app = directory.app(forBundleURL: item.appURL), !directory.isExcluded(app) else {
+            DebugLog.event(.preview, "\(item.logName): not running or excluded, no preview")
+            return
+        }
+        guard item != anchor || !panel.isVisible else {
+            DebugLog.event(.preview, "\(item.logName): preview already shown")
+            return
+        }
         // Moving between icons with the panel open switches at once, as on Windows.
         let delay: Duration = panel.isVisible ? .zero : .milliseconds(settings().hoverDelayMs)
+        DebugLog.event(.preview, "\(app.logName): preview in \(delay)")
         anchor = item
         updateTracking()
         pending = Task { [weak self] in
@@ -91,11 +101,16 @@ final class PreviewController {
         let windows = await Task.detached {
             WindowService.previewWindows(of: pid, includeOtherSpaces: includeOtherSpaces)
         }.value
-        guard !Task.isCancelled else { return }
-        guard !windows.isEmpty, let screen = Self.screen(containing: item.frame) else {
-            hide()
+        guard !Task.isCancelled else {
+            DebugLog.event(.preview, "\(app.logName): preview cancelled while listing windows")
             return
         }
+        guard !windows.isEmpty, let screen = Self.screen(containing: item.frame) else {
+            hide(reason: windows.isEmpty ? "\(app.logName) has no windows" : "no screen holds the icon")
+            return
+        }
+        DebugLog.event(.preview, "\(app.logName): show \(windows.count) windows: "
+            + windows.map(\.logName).joined(separator: ", "))
         let edge = dock.iconList()?.frame().map { DockEdge.detect(listFrame: $0, screen: screen.cgFrame) } ?? .bottom
         let layout = PreviewLayout(
             count: windows.count,
@@ -106,6 +121,7 @@ final class PreviewController {
         // window, and the previous image of a live window until the new
         // capture arrives.
         model.images = snapshots.cachedImages(for: windows.compactMap(\.windowID))
+        DebugLog.event(.preview, "cached images for \(model.images.count) of \(windows.count) windows")
         model.windows = windows
         model.edge = edge
         model.layout = layout
@@ -127,7 +143,7 @@ final class PreviewController {
     }
 
     private func select(_ window: PreviewWindow) {
-        hide()
+        hide(reason: "window selected: \(window.logName)")
         Task.detached { WindowService.focus(window.window) }
     }
 
@@ -135,7 +151,11 @@ final class PreviewController {
     /// read back instead of edited, because the app can refuse the close,
     /// for example with a save dialog.
     private func close(_ window: PreviewWindow) {
-        guard let anchor, let app = directory.app(forBundleURL: anchor.appURL) else { return }
+        guard let anchor, let app = directory.app(forBundleURL: anchor.appURL) else {
+            DebugLog.event(.preview, "close of \(window.logName) ignored: the app is gone")
+            return
+        }
+        DebugLog.event(.preview, "closing \(window.logName), then listing \(app.logName) again")
         pending?.cancel()
         if let id = window.windowID {
             snapshots.forget(id)
@@ -158,6 +178,7 @@ final class PreviewController {
             // The Dock posts nothing for a return from the gap below or
             // beside the icon, so the pointer position decides.
             if let item = hoverState.pointerReturned(), Self.hitArea(item.frame).contains(point) {
+                DebugLog.event(.pointer, "returned to \(item.logName) at \(point.logText)")
                 schedule(item)
             }
             return
@@ -166,11 +187,15 @@ final class PreviewController {
         // The union also covers the gap between the icon and the panel.
         let region = panel.isVisible ? anchor.frame.union(panelFrame) : anchor.frame
         if !Self.hitArea(region).contains(point) {
-            hide()
+            hide(reason: "the pointer left \(anchor.logName)\(panel.isVisible ? " and the panel" : "") "
+                + "at \(point.logText)")
         }
     }
 
-    private func hide() {
+    private func hide(reason: String) {
+        if anchor != nil || panel.isVisible {
+            DebugLog.event(.preview, "hide: \(reason)")
+        }
         pending?.cancel()
         pending = nil
         anchor = nil

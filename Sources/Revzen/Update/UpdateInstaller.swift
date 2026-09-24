@@ -126,7 +126,7 @@ enum DiskImage {
             } catch let detachError {
                 // The copy error is the one the user needs; the detach
                 // failure only leaves a mounted image behind.
-                log.error("Could not detach \(mountPoint.path, privacy: .public): \(detachError.localizedDescription, privacy: .public)")
+                DebugLog.error(.update, "could not detach \(mountPoint.path): \(detachError.localizedDescription)")
             }
             throw error
         }

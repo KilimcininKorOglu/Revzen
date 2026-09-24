@@ -50,9 +50,11 @@ final class DockServices {
         }
         try tap.start()
         eventTap = tap
+        DebugLog.event(.app, "Dock services started")
     }
 
     func stop() {
+        DebugLog.event(.app, "Dock services stopped")
         eventTap?.stop()
         eventTap = nil
         preview.stop()

@@ -27,8 +27,10 @@ final class DockAX: Sendable {
         let pid = NSRunningApplication.runningApplications(withBundleIdentifier: Self.bundleID).first?.processIdentifier
         let bound = pid.map { Process(pid: $0, element: AXElement.application($0)) }
         process.withLock { $0 = bound }
-        if bound == nil {
-            log.error("the Dock process is not running")
+        if let pid {
+            DebugLog.event(.app, "attached to the Dock, pid \(pid)")
+        } else {
+            DebugLog.error(.app, "the Dock process is not running")
         }
     }
 

@@ -16,7 +16,9 @@ final class PointerTracker: Sendable {
     }
 
     func setActive(_ active: Bool) {
-        isActive.store(active, ordering: .relaxed)
+        if isActive.exchange(active, ordering: .relaxed) != active {
+            DebugLog.event(.pointer, "tracking \(active ? "on" : "off")")
+        }
     }
 
     /// Called on the event tap thread for every pointer move. Moves that

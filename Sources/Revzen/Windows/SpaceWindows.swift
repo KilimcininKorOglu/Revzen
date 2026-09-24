@@ -32,7 +32,7 @@ enum SpaceWindows {
 
     private static func windowList() -> [WindowInfo] {
         guard let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] else {
-            log.error("the window server returned no window list")
+            DebugLog.error(.window, "the window server returned no window list")
             return []
         }
         return list.compactMap(info)

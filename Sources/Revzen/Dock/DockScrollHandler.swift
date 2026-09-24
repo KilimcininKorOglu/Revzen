@@ -42,6 +42,7 @@ final class DockScrollHandler: Sendable {
             return state.stepper.add(delta, continuous: continuous)
         }
         if step != 0 {
+            DebugLog.event(.scroll, "\(app.logName): delta=\(delta) continuous=\(continuous) -> step \(step)")
             actions.async { WindowService.cycle(app.pid, step: step) }
         }
         return true

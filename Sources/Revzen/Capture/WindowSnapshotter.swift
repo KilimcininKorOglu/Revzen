@@ -30,6 +30,7 @@ final class WindowSnapshotter {
         ) { [weak self] note in
             guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
             let pid = app.processIdentifier
+            DebugLog.event(.capture, "snapshot on deactivation of \(app.logName)")
             Task { @MainActor in await self?.snapshot(pid: pid) }
         }
         refreshTask = Task { [weak self] in
