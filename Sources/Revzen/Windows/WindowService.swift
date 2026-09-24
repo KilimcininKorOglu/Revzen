@@ -22,9 +22,10 @@ struct PreviewWindow: Sendable, Identifiable, Equatable {
 /// Window queries and window actions through the Accessibility API.
 enum WindowService {
     /// Windows of the app with the data the preview needs. Blocks on AX, so
-    /// call it off the main actor.
+    /// call it off the main actor. The preview does not run on the tap
+    /// thread, so it waits as long as a window action for a busy app.
     static func previewWindows(of pid: pid_t) -> [PreviewWindow] {
-        windows(of: pid).map { window in
+        windows(of: pid, timeout: AXElement.actionTimeout).map { window in
             PreviewWindow(
                 window: window,
                 windowID: window.element.windowID(),
