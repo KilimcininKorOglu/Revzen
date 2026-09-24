@@ -17,7 +17,7 @@ Or download `Revzen.dmg` from the [latest release](https://github.com/Kilimcinin
 - **Click to minimize.** Click the icon of the active app to minimize its focused window. Click it again to restore the window minimized last. Modified clicks (Command, Option, Control, Shift) keep their Dock meaning.
 - **Window previews.** Hover a Dock icon to see a preview of each window of the app, with the window title under it. The previews are in alphabetical order of the titles. Click a preview to bring that window to the front, restoring it when minimized.
 - **Close from the preview.** Close a window with the "x" in the corner of its preview, or with a middle click on the preview. The app may still ask to save changes.
-- **Minimized windows.** macOS cannot capture a minimized window, so Revzen keeps the last image of each window. Images are taken during previews, before a Dock click minimizes a window, when an app stops being active, and every 10 seconds for the active app. The images live in memory only, so a window minimized before Revzen started shows the app icon.
+- **Minimized windows.** ScreenCaptureKit cannot capture a minimized window, so Revzen reads its last image from the window server through a private SkyLight call. When that call fails, the preview shows the last image Revzen took of the window: during previews, before a Dock click minimizes a window, when an app stops being active, and every 10 seconds for the active app. Without either image, the tile shows the app icon.
 - **Scroll to switch.** Scroll over a Dock icon to bring the app's windows to the front one after another, in the order they were created.
 - **Spaces.** Optionally show windows from other Spaces in the preview.
 - **Updates.** Revzen checks GitHub for a new release once a day, and "Check for Updates…" in the menu checks at once. A new release opens a window with its notes, and Revzen installs it in place (see [Updates](#updates)).
@@ -74,12 +74,13 @@ The `Release` workflow builds, signs and notarizes the app and the DMG, signs th
 
 ## Private API
 
-Revzen uses two private HIServices functions, as AltTab and DockDoor do:
+Revzen uses three private functions, as AltTab and DockDoor do:
 
-- `_AXUIElementGetWindow` maps an Accessibility window to its window ID, which ScreenCaptureKit needs.
-- `_AXUIElementCreateWithRemoteToken` reaches windows on other Spaces.
+- `_AXUIElementGetWindow` (HIServices) maps an Accessibility window to its window ID, which ScreenCaptureKit needs.
+- `_AXUIElementCreateWithRemoteToken` (HIServices) reaches windows on other Spaces.
+- `CGSHWCaptureWindowList` (SkyLight) reads the image of a minimized window. Revzen looks it up at run time.
 
-A macOS update can remove them. The preview then shows the app icon instead of the window image and lists only the current Space. The app cannot ship in the Mac App Store, because the Accessibility permission rules out the App Sandbox.
+A macOS update can remove them. The preview then shows the app icon instead of the window image, lists only the current Space, and shows minimized windows only from the images Revzen took earlier. The app cannot ship in the Mac App Store, because the Accessibility permission rules out the App Sandbox.
 
 ## License
 

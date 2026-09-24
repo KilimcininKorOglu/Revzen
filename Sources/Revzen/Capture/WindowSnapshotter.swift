@@ -2,8 +2,8 @@ import AppKit
 import RevzenCore
 
 /// Keeps the last image of each window. ScreenCaptureKit cannot capture a
-/// minimized window, so its preview shows the image taken before the
-/// minimize. Images are taken:
+/// minimized window; SkyLight usually can, and when it cannot, the preview
+/// shows the image taken before the minimize. Images are taken:
 /// - whenever a preview captures live windows,
 /// - right before Revzen minimizes an app's windows,
 /// - when an app stops being the active app,
@@ -64,10 +64,13 @@ final class WindowSnapshotter {
         return images
     }
 
-    /// Captures the windows that are not minimized and stores the images.
+    /// Captures the windows and stores the images.
     func captureLive(_ windows: [PreviewWindow], scale: CGFloat) async -> [CGWindowID: CGImage] {
-        let ids = windows.filter { !$0.window.isMinimized }.compactMap(\.windowID)
-        let images = await capture.capture(ids, maxPointSize: PreviewLayout.maxImageSize, scale: scale)
+        let size = PreviewLayout.maxImageSize
+        let visible = windows.filter { !$0.window.isMinimized }.compactMap(\.windowID)
+        let minimized = windows.filter(\.window.isMinimized).compactMap(\.windowID)
+        var images = await capture.capture(visible, maxPointSize: size, scale: scale)
+        images.merge(await capture.captureMinimized(minimized, maxPointSize: size, scale: scale)) { live, _ in live }
         for (id, image) in images {
             cache.insert(image, for: id)
         }
