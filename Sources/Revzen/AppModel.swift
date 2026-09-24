@@ -10,6 +10,7 @@ let log = Logger(subsystem: "com.kilimcininkoroglu.revzen", category: "app")
 @Observable
 final class AppModel {
     let permissions = Permissions()
+    let loginItem = LoginItem()
 
     var settings: RevzenSettings {
         didSet {
