@@ -34,11 +34,6 @@ public struct RevzenSettings: Codable, Sendable, Equatable {
         )
     }
 
-    public func isExcluded(_ bundleID: String?) -> Bool {
-        guard let bundleID else { return false }
-        return excludedBundleIDs.contains(bundleID)
-    }
-
     private static func clampedDelay(_ value: Int) -> Int {
         min(max(value, hoverDelayRange.lowerBound), hoverDelayRange.upperBound)
     }

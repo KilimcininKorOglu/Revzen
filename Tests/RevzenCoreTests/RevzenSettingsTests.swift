@@ -56,12 +56,4 @@ struct RevzenSettingsTests {
         defaults.set(Data("not json".utf8), forKey: SettingsStore.key)
         #expect(throws: DecodingError.self) { try store.load() }
     }
-
-    @Test("Only listed bundle IDs are excluded, and an app without an ID never is")
-    func exclusionMatchesBundleID() {
-        let settings = RevzenSettings(excludedBundleIDs: ["com.apple.Safari"])
-        #expect(settings.isExcluded("com.apple.Safari"))
-        #expect(!settings.isExcluded("com.apple.finder"))
-        #expect(!settings.isExcluded(nil))
-    }
 }
