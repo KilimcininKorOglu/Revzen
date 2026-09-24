@@ -8,7 +8,7 @@ final class PreviewController {
     private let dock: DockAX
     private let directory: AppDirectory
     private let snapshots: WindowSnapshotter
-    private let hoverDelay: @MainActor () -> Duration
+    private let settings: @MainActor () -> RevzenSettings
     private let model = PreviewModel()
     private lazy var panel = PreviewPanel(model: model)
     private lazy var hover = DockHoverObserver(dock: dock) { [weak self] item in self?.hoverChanged(item) }
@@ -24,12 +24,12 @@ final class PreviewController {
         dock: DockAX,
         directory: AppDirectory,
         snapshots: WindowSnapshotter,
-        hoverDelay: @escaping @MainActor () -> Duration
+        settings: @escaping @MainActor () -> RevzenSettings
     ) {
         self.dock = dock
         self.directory = directory
         self.snapshots = snapshots
-        self.hoverDelay = hoverDelay
+        self.settings = settings
         model.onSelect = { [weak self] window in self?.select(window) }
         model.onClose = { [weak self] window in self?.close(window) }
     }
@@ -57,7 +57,7 @@ final class PreviewController {
         }
         guard item != anchor || !panel.isVisible else { return }
         // Moving between icons with the panel open switches at once, as on Windows.
-        let delay = panel.isVisible ? .zero : hoverDelay()
+        let delay: Duration = panel.isVisible ? .zero : .milliseconds(settings().hoverDelayMs)
         anchor = item
         pointer.setActive(true)
         pending = Task { [weak self] in
@@ -72,7 +72,10 @@ final class PreviewController {
 
     private func show(_ app: RunningApp, for item: DockItem) async {
         let pid = app.pid
-        let windows = await Task.detached { WindowService.previewWindows(of: pid) }.value
+        let includeOtherSpaces = settings().showOtherSpaces
+        let windows = await Task.detached {
+            WindowService.previewWindows(of: pid, includeOtherSpaces: includeOtherSpaces)
+        }.value
         guard !Task.isCancelled else { return }
         guard !windows.isEmpty, let screen = Self.screen(containing: item.frame) else {
             hide()

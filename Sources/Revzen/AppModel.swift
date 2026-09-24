@@ -53,7 +53,7 @@ final class AppModel {
 
     private func startServices() {
         let services = DockServices(excludedBundleIDs: settings.excludedBundleIDs) { [weak self] in
-            .milliseconds(self?.settings.hoverDelayMs ?? RevzenSettings.defaultHoverDelayMs)
+            self?.settings ?? RevzenSettings()
         }
         do {
             try services.start()

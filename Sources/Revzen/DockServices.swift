@@ -1,4 +1,5 @@
 import AppKit
+import RevzenCore
 
 /// The services that act on the Dock: running app tracking, the event tap
 /// and the preview. They need the Accessibility permission to start.
@@ -11,10 +12,10 @@ final class DockServices {
     private var workspaceObserver: WorkspaceObserver?
     private var eventTap: EventTap?
 
-    init(excludedBundleIDs: Set<String>, hoverDelay: @escaping @MainActor () -> Duration) {
+    init(excludedBundleIDs: Set<String>, settings: @escaping @MainActor () -> RevzenSettings) {
         directory.setExcluded(excludedBundleIDs)
         snapshots = WindowSnapshotter(directory: directory)
-        preview = PreviewController(dock: dock, directory: directory, snapshots: snapshots, hoverDelay: hoverDelay)
+        preview = PreviewController(dock: dock, directory: directory, snapshots: snapshots, settings: settings)
     }
 
     func setExcluded(_ bundleIDs: Set<String>) {

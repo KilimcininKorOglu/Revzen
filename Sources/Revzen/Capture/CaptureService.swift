@@ -3,9 +3,10 @@ import ScreenCaptureKit
 
 /// Captures single-window images with ScreenCaptureKit.
 actor CaptureService {
-    /// Captures each window that is on screen, scaled to fit `maxPointSize`
-    /// at `scale` pixels per point. Windows that ScreenCaptureKit does not
-    /// list, such as minimized ones, are missing from the result.
+    /// Captures each window, scaled to fit `maxPointSize` at `scale` pixels
+    /// per point. Windows on other Spaces are captured too. Windows that
+    /// ScreenCaptureKit does not list are missing from the result. Callers
+    /// leave minimized windows out, because their capture is empty.
     func capture(_ ids: [CGWindowID], maxPointSize: CGSize, scale: CGFloat) async -> [CGWindowID: CGImage] {
         guard CGPreflightScreenCaptureAccess(), !ids.isEmpty else { return [:] }
         let content: SCShareableContent
@@ -17,7 +18,7 @@ actor CaptureService {
         }
         let wanted = Set(ids)
         var images: [CGWindowID: CGImage] = [:]
-        for window in content.windows where wanted.contains(window.windowID) && window.isOnScreen {
+        for window in content.windows where wanted.contains(window.windowID) {
             if let image = await capture(window, maxPointSize: maxPointSize, scale: scale) {
                 images[window.windowID] = image
             }
