@@ -49,6 +49,7 @@ final class DockHoverObserver {
     }
 
     fileprivate func selectionChanged() {
+        dock.refreshBand()
         let hovered = list?.elements(kAXSelectedChildrenAttribute).first.flatMap(DockAX.appItem(from:))
         DebugLog.event(.hover, "Dock selection: \(hovered?.logName ?? "none")")
         onHover(hovered)

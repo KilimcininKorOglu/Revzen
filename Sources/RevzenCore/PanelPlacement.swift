@@ -14,6 +14,30 @@ public enum DockEdge: Sendable, Equatable {
     }
 
     public var isVertical: Bool { self != .bottom }
+
+    /// The largest magnified icon the Dock draws, in points.
+    public static let maxMagnifiedIcon: CGFloat = 128
+
+    /// The strip of `screen` along the Dock edge that can hold a Dock icon:
+    /// the whole screen length, from the screen edge to past the icon list
+    /// by twice its thickness and at least one magnified icon. A point
+    /// outside it is not on a Dock icon.
+    public static func band(listFrame: CGRect, screen: CGRect) -> CGRect {
+        let edge = detect(listFrame: listFrame, screen: screen)
+        let thickness = edge.isVertical ? listFrame.width : listFrame.height
+        let reach = max(2 * thickness, maxMagnifiedIcon)
+        switch edge {
+        case .bottom:
+            let top = max(screen.minY, listFrame.minY - reach)
+            return CGRect(x: screen.minX, y: top, width: screen.width, height: screen.maxY - top)
+        case .left:
+            let right = min(screen.maxX, listFrame.maxX + reach)
+            return CGRect(x: screen.minX, y: screen.minY, width: right - screen.minX, height: screen.height)
+        case .right:
+            let left = max(screen.minX, listFrame.minX - reach)
+            return CGRect(x: left, y: screen.minY, width: screen.maxX - left, height: screen.height)
+        }
+    }
 }
 
 /// Positions the preview panel next to a Dock icon.

@@ -1,4 +1,5 @@
 import AppKit
+import RevzenCore
 import Synchronization
 
 /// An app icon in the Dock.
@@ -20,6 +21,10 @@ final class DockAX: Sendable {
     }
 
     private let process = Mutex<Process?>(nil)
+    /// The screen strip that can hold a Dock icon. Clicks and scrolls
+    /// outside it skip the AX hit test, which blocks the event tap while the
+    /// Dock is slow. Nil until the first refresh: then every point is tested.
+    private let band = Mutex<CGRect?>(nil)
 
     /// Binds to the running Dock process. Call again when the Dock relaunches.
     @MainActor
@@ -27,6 +32,7 @@ final class DockAX: Sendable {
         let pid = NSRunningApplication.runningApplications(withBundleIdentifier: Self.bundleID).first?.processIdentifier
         let bound = pid.map { Process(pid: $0, element: AXElement.application($0)) }
         process.withLock { $0 = bound }
+        refreshBand()
         if let pid {
             DebugLog.event(.app, "attached to the Dock, pid \(pid)")
         } else {
@@ -38,8 +44,27 @@ final class DockAX: Sendable {
         process.withLock { $0?.pid }
     }
 
+    /// Reads the icon list frame again. Called on attach and on every Dock
+    /// hover notification, which the Dock posts before any click or scroll
+    /// can reach an icon, so the band follows a moved or resized Dock.
+    @MainActor
+    func refreshBand() {
+        let frame = iconList()?.frame()
+        let center = frame.map { CGPoint(x: $0.midX, y: $0.midY) }
+        let screen = center.flatMap { center in NSScreen.screens.map(\.cgFrame).first { $0.contains(center) } }
+        let updated = frame.flatMap { frame in screen.map { DockEdge.band(listFrame: frame, screen: $0) } }
+        let previous = band.withLock { band in
+            defer { band = updated }
+            return band
+        }
+        if previous != updated {
+            DebugLog.event(.app, "Dock band \(updated.map { "\($0)" } ?? "unknown, every point is tested")")
+        }
+    }
+
     /// The app icon under `point`, or nil for any other location.
     func appItem(at point: CGPoint) -> DockItem? {
+        if let band = band.withLock({ $0 }), !band.contains(point) { return nil }
         guard let dock = process.withLock({ $0?.element }), let hit = dock.element(at: point) else { return nil }
         return Self.appItem(from: hit)
     }

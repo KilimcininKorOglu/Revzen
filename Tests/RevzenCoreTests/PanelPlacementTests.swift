@@ -92,3 +92,33 @@ struct PreviewLayoutTests {
         #expect(layout.panelSize.height > layout.panelSize.width)
     }
 }
+
+@Suite("Dock band")
+struct DockBandTests {
+    private let screen = CGRect(x: 0, y: 0, width: 1728, height: 1117)
+
+    @Test("A bottom Dock band spans the screen width and reaches past the icons")
+    func bottom() {
+        let list = CGRect(x: 484, y: 1062, width: 760, height: 55)
+        let band = DockEdge.band(listFrame: list, screen: screen)
+        #expect(band == CGRect(x: 0, y: 1062 - 128, width: 1728, height: 1117 - (1062 - 128)))
+        #expect(band.contains(CGPoint(x: 10, y: 1100)))
+        #expect(!band.contains(CGPoint(x: 800, y: 500)))
+    }
+
+    @Test("A side Dock band covers its edge and twice a thick icon list")
+    func sides() {
+        let left = CGRect(x: 0, y: 300, width: 80, height: 500)
+        #expect(DockEdge.band(listFrame: left, screen: screen) == CGRect(x: 0, y: 0, width: 80 + 160, height: 1117))
+        let right = CGRect(x: 1668, y: 300, width: 60, height: 500)
+        #expect(DockEdge.band(listFrame: right, screen: screen) == CGRect(x: 1668 - 128, y: 0, width: 60 + 128, height: 1117))
+    }
+
+    @Test("The band stays inside the screen of a second display")
+    func secondDisplay() {
+        let second = CGRect(x: 1728, y: 0, width: 1920, height: 1080)
+        let list = CGRect(x: 2400, y: 1030, width: 700, height: 50)
+        let band = DockEdge.band(listFrame: list, screen: second)
+        #expect(band.minX == 1728 && band.maxX == 1728 + 1920 && band.maxY == 1080)
+    }
+}
