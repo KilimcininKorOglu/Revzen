@@ -18,7 +18,11 @@ jobs:
     timeout-minutes: 60
 
     steps:
+      # No later step pushes to this repository, so the contents-write token
+      # stays out of the git config that the build tools can read.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Check that the tag matches Info.plist
         run: |
