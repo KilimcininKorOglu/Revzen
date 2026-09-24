@@ -38,6 +38,7 @@ final class AppModel {
     }
 
     func start() {
+        loginItem.applyDefault()
         if !permissions.accessibility {
             permissions.requestAccessibility()
         }

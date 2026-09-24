@@ -1,3 +1,4 @@
+import Foundation
 import Observation
 import ServiceManagement
 
@@ -15,6 +16,17 @@ final class LoginItem {
 
     /// The user must still allow the item in System Settings > General > Login Items.
     var needsApproval: Bool { status == .requiresApproval }
+
+    /// Launch at login is on by default. The default applies once, on the
+    /// first launch, so a user who turns it off keeps it off.
+    func applyDefault(defaults: UserDefaults = .standard) {
+        let key = "loginItem.defaultApplied"
+        guard !defaults.bool(forKey: key) else { return }
+        defaults.set(true, forKey: key)
+        if status == .notRegistered {
+            set(true)
+        }
+    }
 
     func refresh() {
         status = SMAppService.mainApp.status
