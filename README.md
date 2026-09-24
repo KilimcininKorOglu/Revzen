@@ -2,15 +2,26 @@
 
 Revzen brings Windows-style taskbar behavior to the macOS Dock. It runs as a menu bar app.
 
+Developer: Kerem Gök ([x.com/KogOglan](https://x.com/KogOglan))
+
+## Install
+
+```
+brew install --cask KilimcininKorOglu/tap/revzen
+```
+
+Or download `Revzen.dmg` from the [latest release](https://github.com/KilimcininKorOglu/Revzen/releases/latest) and drag Revzen to Applications.
+
 ## Features
 
 - **Click to minimize.** Click the icon of the active app to minimize its focused window. Click it again to restore the window minimized last. Modified clicks (Command, Option, Control, Shift) keep their Dock meaning.
-- **Window previews.** Hover a Dock icon to see a preview of each window of the app, with the window title under it. Click a preview to bring that window to the front, restoring it when minimized.
+- **Window previews.** Hover a Dock icon to see a preview of each window of the app, with the window title under it. The previews are in alphabetical order of the titles. Click a preview to bring that window to the front, restoring it when minimized.
 - **Close from the preview.** Close a window with the "x" in the corner of its preview, or with a middle click on the preview. The app may still ask to save changes.
 - **Minimized windows.** macOS cannot capture a minimized window, so Revzen keeps the last image of each window. Images are taken during previews, before a Dock click minimizes a window, when an app stops being active, and every 10 seconds for the active app. The images live in memory only, so a window minimized before Revzen started shows the app icon.
 - **Scroll to switch.** Scroll over a Dock icon to bring the app's windows to the front one after another, in the order they were created.
 - **Spaces.** Optionally show windows from other Spaces in the preview.
-- **Settings.** Preview delay, excluded apps, other Spaces and launch at login. Revzen does nothing for an excluded app: the Dock handles its clicks, and it gets no preview or scroll switching.
+- **Updates.** Revzen checks GitHub for a new release once a day, and "Check for Updates…" in the menu checks at once. A new release opens a window with its notes, and Revzen installs it in place (see [Updates](#updates)).
+- **Settings.** Preview delay, excluded apps, other Spaces, launch at login and the automatic update check. Revzen does nothing for an excluded app: the Dock handles its clicks, and it gets no preview or scroll switching.
 - **Appearance.** The preview panel and the Settings window use system materials and colors, so they follow the light and dark appearance.
 
 ## Requirements
@@ -23,6 +34,17 @@ Revzen asks for both permissions on first launch. You can also grant them from t
 
 Launch at login is on by default. The first launch registers Revzen as a login item once. If you turn it off, it stays off.
 
+## Updates
+
+Before the new version replaces the running app, Revzen checks:
+
+1. The SHA-256 of the downloaded DMG against the digest GitHub computed at upload.
+2. The minisign signature of the DMG against the release public key (`Resources/minisign.pub`, also compiled into the app). The trusted comment must be `Revzen <version>`, so an older signed DMG cannot pass as a newer release.
+3. The bundle ID and the version of the app in the DMG.
+4. The code signature: Developer ID of team `5U4P8ULV68` and a notarization ticket.
+
+A failed check stops the update and shows the reason. When Revzen is in a folder that the user cannot write, macOS asks for an administrator password. Downloads stay in `~/Library/Caches/Revzen/updates` and are deleted after seven days.
+
 ## Building
 
 The project is a Swift package. The Makefile builds a signed app bundle.
@@ -34,9 +56,21 @@ The project is a Swift package. The Makefile builds a signed app bundle.
 | `make lint`  | Runs SwiftLint in strict mode. Cyclomatic complexity is limited to 10.            |
 | `make app`   | Builds `build/Revzen.app` and signs it.                                          |
 | `make run`   | Builds, signs and launches the app, replacing a running instance.                |
-| `make clean` | Deletes `.build` and `build`.                                                    |
+| `make icon`  | Regenerates `Resources/AppIcon.icns` from the `dock.rectangle` SF Symbol.        |
+| `make dmg`   | Builds `dist/Revzen.dmg` from the app bundle.                                    |
+| `make release` | Builds, signs and notarizes the app and the DMG, then signs the DMG with minisign. |
+| `make clean` | Deletes `.build`, `build` and `dist`.                                            |
 
 `make app` signs with the identity in `SIGN_IDENTITY`. A stable identity keeps the Accessibility and Screen Recording grants across rebuilds. Use `make app SIGN_IDENTITY=-` for an ad-hoc signature.
+
+The binary is universal (arm64 and x86_64).
+
+## Releasing
+
+1. Set `CFBundleShortVersionString` in `Resources/Info.plist` and commit.
+2. Push a tag with the same version, for example `git tag v1.0.1 && git push origin v1.0.1`.
+
+The `Release` workflow builds, signs and notarizes the app and the DMG, signs the DMG with minisign, publishes the GitHub release with `Revzen.dmg` and `Revzen.dmg.minisig`, and bumps `Casks/revzen.rb` in [KilimcininKorOglu/homebrew-tap](https://github.com/KilimcininKorOglu/homebrew-tap). The workflow fails when the tag does not match `Info.plist`. It needs these repository secrets: `APPLE_DEVELOPER_ID_CERT_P12`, `APPLE_DEVELOPER_ID_CERT_PWD`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_SPECIFIC_PWD`, `MINISIGN_KEY`, `MINISIGN_KEY_PWD` and `HOMEBREW_TAP_TOKEN`.
 
 ## Private API
 
