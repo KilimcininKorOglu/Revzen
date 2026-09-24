@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" width="128" height="128" alt="Revzen logo">
+</p>
+
 # Revzen
 
 Revzen brings Windows-style taskbar behavior to the macOS Dock. It runs as a menu bar app.
