@@ -1,0 +1,19 @@
+included:
+  - Sources
+  - Tests
+  - Package.swift
+
+cyclomatic_complexity:
+  warning: 10
+  error: 10
+  ignores_case_statements: false
+
+line_length:
+  warning: 140
+  error: 160
+
+identifier_name:
+  excluded:
+    - id
+    - x
+    - y
