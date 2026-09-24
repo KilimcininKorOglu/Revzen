@@ -14,15 +14,19 @@ public struct RevzenSettings: Codable, Sendable, Equatable {
     public var excludedBundleIDs: Set<String>
     /// Show windows that are on another Space in the preview.
     public var showOtherSpaces: Bool
+    /// Check GitHub for a new release in the background once a day.
+    public var autoCheckUpdates: Bool
 
     public init(
         hoverDelayMs: Int = RevzenSettings.defaultHoverDelayMs,
         excludedBundleIDs: Set<String> = [],
-        showOtherSpaces: Bool = false
+        showOtherSpaces: Bool = false,
+        autoCheckUpdates: Bool = true
     ) {
         self.hoverDelayMs = Self.clampedDelay(hoverDelayMs)
         self.excludedBundleIDs = excludedBundleIDs
         self.showOtherSpaces = showOtherSpaces
+        self.autoCheckUpdates = autoCheckUpdates
     }
 
     public init(from decoder: Decoder) throws {
@@ -30,7 +34,9 @@ public struct RevzenSettings: Codable, Sendable, Equatable {
         self.init(
             hoverDelayMs: try container.decode(Int.self, forKey: .hoverDelayMs),
             excludedBundleIDs: try container.decode(Set<String>.self, forKey: .excludedBundleIDs),
-            showOtherSpaces: try container.decode(Bool.self, forKey: .showOtherSpaces)
+            showOtherSpaces: try container.decode(Bool.self, forKey: .showOtherSpaces),
+            // Settings saved before 1.0.0 have no such field.
+            autoCheckUpdates: try container.decodeIfPresent(Bool.self, forKey: .autoCheckUpdates) ?? true
         )
     }
 

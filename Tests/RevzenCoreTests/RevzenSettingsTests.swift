@@ -18,6 +18,7 @@ struct RevzenSettingsTests {
         #expect(settings.hoverDelayMs == RevzenSettings.defaultHoverDelayMs)
         #expect(settings.excludedBundleIDs.isEmpty)
         #expect(settings.showOtherSpaces == false)
+        #expect(settings.autoCheckUpdates)
     }
 
     @Test("Saved settings survive a relaunch")
@@ -26,7 +27,8 @@ struct RevzenSettingsTests {
         let saved = RevzenSettings(
             hoverDelayMs: 750,
             excludedBundleIDs: ["com.apple.Terminal"],
-            showOtherSpaces: true
+            showOtherSpaces: true,
+            autoCheckUpdates: false
         )
         try store.save(saved)
         #expect(try store.load() == saved)
@@ -48,6 +50,16 @@ struct RevzenSettingsTests {
         let json = #"{"hoverDelayMs":-10,"excludedBundleIDs":[],"showOtherSpaces":false}"#
         defaults.set(Data(json.utf8), forKey: SettingsStore.key)
         #expect(try store.load().hoverDelayMs == 0)
+    }
+
+    @Test("Settings saved before the update check existed turn the automatic check on")
+    func olderSettingsEnableAutoCheck() throws {
+        let (store, defaults) = makeStore()
+        let json = #"{"hoverDelayMs":300,"excludedBundleIDs":["com.apple.Terminal"],"showOtherSpaces":true}"#
+        defaults.set(Data(json.utf8), forKey: SettingsStore.key)
+        let settings = try store.load()
+        #expect(settings.autoCheckUpdates)
+        #expect(settings.hoverDelayMs == 300)
     }
 
     @Test("A corrupt stored value is reported, not silently replaced by defaults")
