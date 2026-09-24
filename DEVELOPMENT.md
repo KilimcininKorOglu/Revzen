@@ -68,6 +68,6 @@ Revzen uses three private functions, as AltTab and DockDoor do:
 
 - `_AXUIElementGetWindow` (HIServices) maps an Accessibility window to its window ID, which ScreenCaptureKit needs.
 - `_AXUIElementCreateWithRemoteToken` (HIServices) reaches windows on other Spaces.
-- `CGSHWCaptureWindowList` (SkyLight) reads the image of a minimized window. Revzen looks it up at run time with `dlsym`, so its removal does not stop the app from launching.
+- `CGSHWCaptureWindowList` (SkyLight) reads the image of a minimized window.
 
-A macOS update can remove them. The preview then shows the app icon instead of the window image, lists only the current Space, and shows minimized windows only from the images Revzen took earlier. List every new private function here.
+Revzen looks up all three at run time with `dlsym`, so their removal does not stop the app from launching. A macOS update can remove them. The preview then shows the app icon instead of the window image, lists only the current Space, and shows minimized windows only from the images Revzen took earlier. List every new private function here.
