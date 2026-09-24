@@ -47,6 +47,7 @@ struct MenuContent: View {
             openSettings()
         }
         .keyboardShortcut(",")
+        Button("Check for Updates…") { model.updates.checkNow() }
         Divider()
         Button("Quit Revzen") { NSApp.terminate(nil) }
             .keyboardShortcut("q")

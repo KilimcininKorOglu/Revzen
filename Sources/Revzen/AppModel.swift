@@ -24,6 +24,8 @@ final class AppModel {
         }
     }
 
+    @ObservationIgnored let updates = UpdateService()
+    @ObservationIgnored private var updateWindow: UpdateWindowController?
     @ObservationIgnored private let store: SettingsStore
     @ObservationIgnored private var services: DockServices?
 
@@ -39,6 +41,7 @@ final class AppModel {
 
     func start() {
         loginItem.applyDefault()
+        startUpdates()
         if !permissions.accessibility {
             permissions.requestAccessibility()
         }
@@ -49,6 +52,7 @@ final class AppModel {
 
     func stop() {
         permissions.stopWaiting()
+        updates.stop()
         services?.stop()
         services = nil
     }
@@ -64,6 +68,15 @@ final class AppModel {
             services.stop()
             ErrorReporter.present("Revzen could not start Dock click handling", error: error)
         }
+    }
+}
+
+extension AppModel {
+    private func startUpdates() {
+        let window = UpdateWindowController(service: updates)
+        updates.onPresent = { [weak window] in window?.show() }
+        updateWindow = window
+        updates.start { [weak self] in self?.settings.autoCheckUpdates ?? false }
     }
 }
 
