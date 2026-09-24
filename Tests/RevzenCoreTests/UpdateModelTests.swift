@@ -99,3 +99,31 @@ struct UpdateScheduleTests {
         #expect(UpdateSchedule.isDue(lastCheck: now.addingTimeInterval(3600), now: now))
     }
 }
+
+@Suite("GitHubRateLimit")
+struct GitHubRateLimitTests {
+    private let now = Date(timeIntervalSince1970: 1_000_000)
+
+    private func reset(_ status: Int, _ headers: [String: String]) -> Date? {
+        GitHubRateLimit.resetDate(status: status, header: { headers[$0] }, now: now)
+    }
+
+    @Test("A used-up limit reports the reset time GitHub sent")
+    func primaryLimit() {
+        let headers = ["x-ratelimit-remaining": "0", "x-ratelimit-reset": "1000600"]
+        #expect(reset(403, headers) == Date(timeIntervalSince1970: 1_000_600))
+        #expect(reset(429, headers) == Date(timeIntervalSince1970: 1_000_600))
+    }
+
+    @Test("A secondary limit reports now plus the retry-after seconds")
+    func retryAfter() {
+        #expect(reset(429, ["retry-after": "60"]) == now.addingTimeInterval(60))
+    }
+
+    @Test("A 403 with requests left, another status or no headers is not a rate limit")
+    func notRateLimited() {
+        #expect(reset(403, ["x-ratelimit-remaining": "12", "x-ratelimit-reset": "1000600"]) == nil)
+        #expect(reset(403, [:]) == nil)
+        #expect(reset(500, ["retry-after": "60"]) == nil)
+    }
+}

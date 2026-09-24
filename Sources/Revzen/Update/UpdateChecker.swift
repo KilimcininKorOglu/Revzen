@@ -5,12 +5,20 @@ import RevzenCore
 enum UpdateChecker {
     enum Failure: Error, LocalizedError {
         case noRelease
+        case rateLimited(until: Date)
         case http(Int)
 
         var errorDescription: String? {
             switch self {
-            case .noRelease: "No release of Revzen is published on GitHub yet."
-            case .http(let status): "GitHub answered with HTTP \(status)."
+            case .noRelease:
+                "No release of Revzen is published on GitHub yet."
+            case .rateLimited(let date):
+                "GitHub limits update requests from this network. "
+                    + "Try again after \(date.formatted(date: .omitted, time: .shortened))."
+            case .http(let status) where status >= 500:
+                "GitHub is not available at the moment. Try again later. (HTTP \(status))"
+            case .http(let status):
+                "GitHub answered with HTTP \(status)."
             }
         }
     }
@@ -33,7 +41,12 @@ enum UpdateChecker {
 
     static func requireSuccess(_ response: URLResponse) throws {
         let status = status(of: response)
-        guard (200..<300).contains(status) else { throw Failure.http(status) }
+        guard !(200..<300).contains(status) else { return }
+        let header = { (name: String) in (response as? HTTPURLResponse)?.value(forHTTPHeaderField: name) }
+        if let reset = GitHubRateLimit.resetDate(status: status, header: header, now: Date()) {
+            throw Failure.rateLimited(until: reset)
+        }
+        throw Failure.http(status)
     }
 
     private static func status(of response: URLResponse) -> Int {
