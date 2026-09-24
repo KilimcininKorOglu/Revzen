@@ -65,9 +65,11 @@ final class PreviewController {
         // Without a target the pointer may be on its way into the icon or the
         // panel, or out of the Dock. pointerMoved decides.
         let target = hoverState.dockNotified(item, pointerInside: inside)
-        DebugLog.event(.hover, "\(item?.logName ?? "none") pointer=\(point.logText) "
-            + "icon=\(item.map { "\(Int($0.frame.minY))..\(Int($0.frame.maxY))" } ?? "-") inside=\(inside) -> "
-            + (target.map { "preview \($0.logName)" } ?? "no preview, the pointer decides"))
+        DebugLog.event(
+            .hover,
+            "\(item?.logName ?? "none") pointer=\(point.logText) "
+                + "icon=\(item.map { "\(Int($0.frame.minY))..\(Int($0.frame.maxY))" } ?? "-") inside=\(inside) -> "
+                + (target.map { "preview \($0.logName)" } ?? "no preview, the pointer decides"))
         if let target {
             schedule(target)
         }
@@ -92,7 +94,7 @@ final class PreviewController {
             do {
                 try await Task.sleep(for: delay)
             } catch {
-                return // cancelled by a newer hover
+                return  // cancelled by a newer hover
             }
             await self?.show(app, for: item)
         }
@@ -112,8 +114,10 @@ final class PreviewController {
             hide(reason: windows.isEmpty ? "\(app.logName) has no windows" : "no screen holds the icon")
             return
         }
-        DebugLog.event(.preview, "\(app.logName): show \(windows.count) windows: "
-            + windows.map(\.logName).joined(separator: ", "))
+        DebugLog.event(
+            .preview,
+            "\(app.logName): show \(windows.count) windows: "
+                + windows.map(\.logName).joined(separator: ", "))
         let edge = dock.iconList()?.frame().map { DockEdge.detect(listFrame: $0, screen: screen.cgFrame) } ?? .bottom
         let layout = PreviewLayout(
             count: windows.count,
@@ -190,8 +194,9 @@ final class PreviewController {
         // The union also covers the gap between the icon and the panel.
         let region = panel.isVisible ? anchor.frame.union(panelFrame) : anchor.frame
         if !Self.hitArea(region).contains(point) {
-            hide(reason: "the pointer left \(anchor.logName)\(panel.isVisible ? " and the panel" : "") "
-                + "at \(point.logText)")
+            hide(
+                reason: "the pointer left \(anchor.logName)\(panel.isVisible ? " and the panel" : "") "
+                    + "at \(point.logText)")
         }
     }
 

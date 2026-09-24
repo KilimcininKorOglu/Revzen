@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import RevzenCore
 
 @Suite("SemanticVersion")
@@ -10,9 +11,11 @@ struct SemanticVersionTests {
         #expect(SemanticVersion("10.0.12") == SemanticVersion(major: 10, minor: 0, patch: 12))
     }
 
-    @Test("Anything that is not three plain numbers is rejected", arguments: [
-        "", "1.2", "1.2.3.4", "v1.2.x", "1.2.3-beta", "1..3", "-1.0.0", "+1.0.0", "v"
-    ])
+    @Test(
+        "Anything that is not three plain numbers is rejected",
+        arguments: [
+            "", "1.2", "1.2.3.4", "v1.2.x", "1.2.3-beta", "1..3", "-1.0.0", "+1.0.0", "v"
+        ])
     func rejectsOtherShapes(text: String) {
         #expect(SemanticVersion(text) == nil)
     }
@@ -29,18 +32,18 @@ struct SemanticVersionTests {
 @Suite("GitHubRelease")
 struct GitHubReleaseTests {
     private let json = """
-    {
-      "tag_name": "v1.1.0",
-      "body": "Fixes",
-      "html_url": "https://github.com/KilimcininKorOglu/Revzen/releases/tag/v1.1.0",
-      "assets": [
-        {"name": "Revzen.dmg", "browser_download_url": "https://example.com/Revzen.dmg",
-         "digest": "sha256:ABCDEF0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
-        {"name": "Revzen.dmg.minisig", "browser_download_url": "https://example.com/Revzen.dmg.minisig",
-         "digest": null}
-      ]
-    }
-    """
+        {
+          "tag_name": "v1.1.0",
+          "body": "Fixes",
+          "html_url": "https://github.com/KilimcininKorOglu/Revzen/releases/tag/v1.1.0",
+          "assets": [
+            {"name": "Revzen.dmg", "browser_download_url": "https://example.com/Revzen.dmg",
+             "digest": "sha256:ABCDEF0123456789abcdef0123456789abcdef0123456789abcdef0123456789"},
+            {"name": "Revzen.dmg.minisig", "browser_download_url": "https://example.com/Revzen.dmg.minisig",
+             "digest": null}
+          ]
+        }
+        """
 
     private func decode(_ text: String) throws -> GitHubRelease {
         try JSONDecoder().decode(GitHubRelease.self, from: Data(text.utf8))

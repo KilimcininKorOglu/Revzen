@@ -16,9 +16,9 @@ enum AppInfo {
     /// The minisign public key of the release pipeline. Release DMGs are
     /// signed with the matching secret key in CI.
     static let minisignPublicKey = """
-    untrusted comment: minisign public key 29F3833BB9C5B962
-    RWRiucW5O4PzKSpAXm2eciOXkDGBhorstbQnT+HNb49tlRfxXymBvzA+
-    """
+        untrusted comment: minisign public key 29F3833BB9C5B962
+        RWRiucW5O4PzKSpAXm2eciOXkDGBhorstbQnT+HNb49tlRfxXymBvzA+
+        """
 
     static var versionString: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"

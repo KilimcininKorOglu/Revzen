@@ -48,14 +48,16 @@ final class EventTap: Sendable {
 
     func start() throws {
         let refcon = Unmanaged.passUnretained(context).toOpaque()
-        guard let port = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: mask,
-            callback: eventTapCallback,
-            userInfo: refcon
-        ) else {
+        guard
+            let port = CGEvent.tapCreate(
+                tap: .cgSessionEventTap,
+                place: .headInsertEventTap,
+                options: .defaultTap,
+                eventsOfInterest: mask,
+                callback: eventTapCallback,
+                userInfo: refcon
+            )
+        else {
             throw Failure.createFailed
         }
         context.port = port

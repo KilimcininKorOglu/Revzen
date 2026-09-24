@@ -21,7 +21,8 @@ public struct PreviewLayout: Sendable, Equatable {
         let tileLength = edge.isVertical ? full.height + Self.titleHeight : full.width
         let fixed = 2 * Self.padding + CGFloat(count - 1) * Self.spacing
         let needed = fixed + CGFloat(count) * tileLength
-        let scale = needed <= available
+        let scale =
+            needed <= available
             ? 1
             : max(Self.minScale, (available - fixed) / (CGFloat(count) * tileLength))
 
@@ -30,7 +31,8 @@ public struct PreviewLayout: Sendable, Equatable {
         let tile = CGSize(width: imageSize.width, height: imageSize.height + Self.titleHeight)
         let along = fixed + CGFloat(count) * (edge.isVertical ? tile.height : tile.width)
         let across = 2 * Self.padding + (edge.isVertical ? tile.width : tile.height)
-        panelSize = edge.isVertical
+        panelSize =
+            edge.isVertical
             ? CGSize(width: across, height: along)
             : CGSize(width: along, height: across)
     }

@@ -53,8 +53,9 @@ final class DockAX: Sendable {
 
     static func appItem(from element: AXElement) -> DockItem? {
         guard element.string(kAXSubroleAttribute) == appItemSubrole,
-              let url = element.url(kAXURLAttribute),
-              let frame = element.frame() else { return nil }
+            let url = element.url(kAXURLAttribute),
+            let frame = element.frame()
+        else { return nil }
         return DockItem(element: element, appURL: url.standardizedFileURL, frame: frame)
     }
 }

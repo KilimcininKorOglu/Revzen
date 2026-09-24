@@ -51,7 +51,7 @@ final class Permissions {
                 do {
                     try await Task.sleep(for: .seconds(1))
                 } catch {
-                    return // cancelled by stopWaiting()
+                    return  // cancelled by stopWaiting()
                 }
                 guard let self else { return }
                 self.refresh()

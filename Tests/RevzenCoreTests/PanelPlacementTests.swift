@@ -1,5 +1,6 @@
 import CoreGraphics
 import Testing
+
 @testable import RevzenCore
 
 @Suite("PanelPlacement")
@@ -50,11 +51,13 @@ struct PanelPlacementTests {
         #expect(PanelPlacement.flipped(flipped, primaryScreenHeight: 1200) == rect)
     }
 
-    @Test("The Dock edge follows the shape and side of the icon list", arguments: [
-        (CGRect(x: 500, y: 1150, width: 1000, height: 50), DockEdge.bottom),
-        (CGRect(x: 0, y: 200, width: 50, height: 800), DockEdge.left),
-        (CGRect(x: 1950, y: 200, width: 50, height: 800), DockEdge.right)
-    ])
+    @Test(
+        "The Dock edge follows the shape and side of the icon list",
+        arguments: [
+            (CGRect(x: 500, y: 1150, width: 1000, height: 50), DockEdge.bottom),
+            (CGRect(x: 0, y: 200, width: 50, height: 800), DockEdge.left),
+            (CGRect(x: 1950, y: 200, width: 50, height: 800), DockEdge.right)
+        ])
     func edgeDetection(list: CGRect, expected: DockEdge) {
         #expect(DockEdge.detect(listFrame: list, screen: screen) == expected)
     }

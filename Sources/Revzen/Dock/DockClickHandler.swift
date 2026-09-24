@@ -87,8 +87,10 @@ extension DockClickHandler {
             hasClickMinimizedWindow: restorable != nil
         )
         let action = ClickPolicy.action(for: state, isExcluded: excluded)
-        DebugLog.event(.click, "\(app.logName): frontmost=\(isFrontmost) excluded=\(excluded) "
-            + "focusedWindow=\(focused != nil) clickMinimized=\(restorable != nil) -> \(action)")
+        DebugLog.event(
+            .click,
+            "\(app.logName): frontmost=\(isFrontmost) excluded=\(excluded) "
+                + "focusedWindow=\(focused != nil) clickMinimized=\(restorable != nil) -> \(action)")
         switch action {
         case .passThrough:
             return false

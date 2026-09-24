@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import RevzenCore
 
 @Suite("BLAKE2b")
@@ -48,22 +49,22 @@ struct MinisignTests {
     // A throwaway key made for these tests with `minisign -G -W`; its secret
     // key was never stored. The files were signed with minisign 0.12.
     private let publicKeyFile = """
-    untrusted comment: minisign public key F156732A0B6E5138
-    RWQ4UW4LKnNW8d4vJWQ1sd55J/ygvBwLU8YDWpmfMh0ZFvtr8FFdnMY7
-    """
+        untrusted comment: minisign public key F156732A0B6E5138
+        RWQ4UW4LKnNW8d4vJWQ1sd55J/ygvBwLU8YDWpmfMh0ZFvtr8FFdnMY7
+        """
     private let data = Data("Revzen minisign fixture\n".utf8)
     private let signature = """
-    untrusted comment: signature from minisign secret key
-    RUQ4UW4LKnNW8ayiH3B2XVPX8ksd4irG/PjyIIa5Yk3+MKCjBB24DtLi+tNsONEVsTSomqPt9ebqlofX+At/Y32dTEtxcppJHAg=
-    trusted comment: Revzen test fixture
-    ze/DDL/IUPAicaC8qk+LWz2OuYDx4GEQJWlHk1bhks/I0eOUOzDhPKqqLW8e0jIUZn2+3rEewGUwZAKrRBzxDQ==
-    """
+        untrusted comment: signature from minisign secret key
+        RUQ4UW4LKnNW8ayiH3B2XVPX8ksd4irG/PjyIIa5Yk3+MKCjBB24DtLi+tNsONEVsTSomqPt9ebqlofX+At/Y32dTEtxcppJHAg=
+        trusted comment: Revzen test fixture
+        ze/DDL/IUPAicaC8qk+LWz2OuYDx4GEQJWlHk1bhks/I0eOUOzDhPKqqLW8e0jIUZn2+3rEewGUwZAKrRBzxDQ==
+        """
     private let legacySignature = """
-    untrusted comment: signature from minisign secret key
-    RWQ4UW4LKnNW8YsD1v5P2I5Un8aKqlfMJDfqQ4SpBDPCkyax9FJR9NPKmZ4yTSXXQ721UD59IpeAGM+9cRJRCZRYq7WyzjlVbgQ=
-    trusted comment: legacy
-    Vj+BfbWcMOZhiuVCzszgnA1TvTctTbg4DtoBcIvIl/jCOnEB8i/gXQRaNPFKMzvIMIU7dKOrPvyhkB7L7TAwCw==
-    """
+        untrusted comment: signature from minisign secret key
+        RWQ4UW4LKnNW8YsD1v5P2I5Un8aKqlfMJDfqQ4SpBDPCkyax9FJR9NPKmZ4yTSXXQ721UD59IpeAGM+9cRJRCZRYq7WyzjlVbgQ=
+        trusted comment: legacy
+        Vj+BfbWcMOZhiuVCzszgnA1TvTctTbg4DtoBcIvIl/jCOnEB8i/gXQRaNPFKMzvIMIU7dKOrPvyhkB7L7TAwCw==
+        """
     private let otherPublicKey = "RWRiucW5O4PzKSpAXm2eciOXkDGBhorstbQnT+HNb49tlRfxXymBvzA+"
 
     @Test("A file signed by the release key verifies and yields its trusted comment")

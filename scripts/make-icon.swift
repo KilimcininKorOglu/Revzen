@@ -13,11 +13,13 @@ guard CommandLine.arguments.count == 2 else {
     exit(2)
 }
 
-guard let rep = NSBitmapImageRep(
-    bitmapDataPlanes: nil, pixelsWide: Int(size), pixelsHigh: Int(size),
-    bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
-    colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
-), let context = NSGraphicsContext(bitmapImageRep: rep) else {
+guard
+    let rep = NSBitmapImageRep(
+        bitmapDataPlanes: nil, pixelsWide: Int(size), pixelsHigh: Int(size),
+        bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+        colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+    ), let context = NSGraphicsContext(bitmapImageRep: rep)
+else {
     fatalError("cannot create the bitmap context")
 }
 NSGraphicsContext.current = context
@@ -31,8 +33,10 @@ gradient?.draw(in: shape, angle: -90)
 
 let config = NSImage.SymbolConfiguration(pointSize: 480, weight: .medium)
     .applying(NSImage.SymbolConfiguration(paletteColors: [.white]))
-guard let symbol = NSImage(systemSymbolName: "dock.rectangle", accessibilityDescription: nil)?
-    .withSymbolConfiguration(config) else {
+guard
+    let symbol = NSImage(systemSymbolName: "dock.rectangle", accessibilityDescription: nil)?
+        .withSymbolConfiguration(config)
+else {
     fatalError("the dock.rectangle symbol is not available")
 }
 let symbolRect = NSRect(

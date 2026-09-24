@@ -26,13 +26,14 @@ public enum SpaceFilter {
     /// that the AX window list did not report. The AX list covers the
     /// current Space and minimized windows, so the rest are on other Spaces.
     public static func otherSpaceCandidates(in list: [WindowInfo], pid: Int32, known: Set<UInt32>) -> Set<UInt32> {
-        Set(list.lazy.filter { info in
-            info.ownerPID == pid
-                && info.layer == 0
-                && !info.isOnScreen
-                && info.bounds.width >= minimumSize.width
-                && info.bounds.height >= minimumSize.height
-                && !known.contains(info.id)
-        }.map(\.id))
+        Set(
+            list.lazy.filter { info in
+                info.ownerPID == pid
+                    && info.layer == 0
+                    && !info.isOnScreen
+                    && info.bounds.width >= minimumSize.width
+                    && info.bounds.height >= minimumSize.height
+                    && !known.contains(info.id)
+            }.map(\.id))
     }
 }

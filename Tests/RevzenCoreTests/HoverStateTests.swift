@@ -1,4 +1,5 @@
 import Testing
+
 @testable import RevzenCore
 
 /// The pointer entered TextEdit.

@@ -27,7 +27,7 @@ public struct ScrollStepper: Sendable {
     /// skip windows.
     public mutating func add(_ delta: Double, continuous: Bool) -> Int {
         if delta != 0, accumulated != 0, (delta > 0) != (accumulated > 0) {
-            accumulated = 0 // a direction change starts over
+            accumulated = 0  // a direction change starts over
         }
         accumulated += delta
         let threshold = continuous ? Self.pixelThreshold : Self.lineThreshold

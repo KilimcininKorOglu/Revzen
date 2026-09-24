@@ -1,5 +1,5 @@
-import SwiftUI
 import RevzenCore
+import SwiftUI
 
 /// The Settings window. Standard SwiftUI form controls follow the system
 /// light and dark appearance without extra code.

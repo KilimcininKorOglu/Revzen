@@ -1,6 +1,6 @@
 import AppKit
-import Observation
 import OSLog
+import Observation
 import RevzenCore
 
 let log = Logger(subsystem: "com.kilimcininkoroglu.revzen", category: "app")

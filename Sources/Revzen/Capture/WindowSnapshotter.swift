@@ -38,7 +38,7 @@ final class WindowSnapshotter {
                 do {
                     try await Task.sleep(for: Self.refreshInterval)
                 } catch {
-                    return // cancelled by stop()
+                    return  // cancelled by stop()
                 }
                 guard let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier else { continue }
                 await self?.snapshot(pid: pid)
@@ -91,7 +91,8 @@ final class WindowSnapshotter {
 
     private func isSkipped(_ pid: pid_t) -> Bool {
         guard let url = NSRunningApplication(processIdentifier: pid)?.bundleURL,
-              let app = directory.app(forBundleURL: url) else { return true }
+            let app = directory.app(forBundleURL: url)
+        else { return true }
         return directory.isExcluded(app)
     }
 }

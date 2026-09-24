@@ -73,7 +73,8 @@ struct PreviewGrid: View {
     let model: PreviewModel
 
     var body: some View {
-        let stack = model.edge.isVertical
+        let stack =
+            model.edge.isVertical
             ? AnyLayout(VStackLayout(spacing: PreviewLayout.spacing))
             : AnyLayout(HStackLayout(spacing: PreviewLayout.spacing))
         stack {

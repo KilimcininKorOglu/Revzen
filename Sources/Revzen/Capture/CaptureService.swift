@@ -25,8 +25,10 @@ actor CaptureService {
             }
         }
         let missing = wanted.subtracting(images.keys).sorted()
-        DebugLog.event(.capture, "captured \(images.count) of \(ids.count) windows"
-            + (missing.isEmpty ? "" : ", no image for \(missing)"))
+        DebugLog.event(
+            .capture,
+            "captured \(images.count) of \(ids.count) windows"
+                + (missing.isEmpty ? "" : ", no image for \(missing)"))
         return images
     }
 
@@ -66,8 +68,10 @@ extension CaptureService {
             images[id] = Self.scaled(full, toFit: maxPointSize, scale: scale)
         }
         let missing = Set(ids).subtracting(images.keys).sorted()
-        DebugLog.event(.capture, "captured \(images.count) of \(ids.count) minimized windows"
-            + (missing.isEmpty ? "" : ", no image for \(missing)"))
+        DebugLog.event(
+            .capture,
+            "captured \(images.count) of \(ids.count) minimized windows"
+                + (missing.isEmpty ? "" : ", no image for \(missing)"))
         return images
     }
 
@@ -76,11 +80,13 @@ extension CaptureService {
         let fit = aspectFit(CGSize(width: image.width, height: image.height), into: box)
         let width = Int(fit.width * scale)
         let height = Int(fit.height * scale)
-        guard let context = CGContext(
-            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
-        ) else {
+        guard
+            let context = CGContext(
+                data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+            )
+        else {
             DebugLog.error(.capture, "no bitmap context for a \(width)x\(height) preview image")
             return nil
         }

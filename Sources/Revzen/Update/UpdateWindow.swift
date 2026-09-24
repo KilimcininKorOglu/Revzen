@@ -22,9 +22,11 @@ final class UpdateWindowController {
     }
 
     private func makeWindow() -> NSWindow {
-        let window = NSWindow(contentViewController: NSHostingController(rootView: UpdateView(service: service) { [weak self] in
-            self?.window?.close()
-        }))
+        let window = NSWindow(
+            contentViewController: NSHostingController(
+                rootView: UpdateView(service: service) { [weak self] in
+                    self?.window?.close()
+                }))
         window.title = "Software Update"
         window.styleMask = [.titled, .closable]
         window.isReleasedWhenClosed = false
@@ -60,16 +62,16 @@ struct UpdateView: View {
         case .upToDate:
             Message(title: "Revzen is up to date", detail: "Version \(AppInfo.versionString) is the latest release.")
             buttons(primary: ("OK", dismiss))
-        case let .available(release, version):
+        case .available(let release, let version):
             Message(title: "Revzen \(version) is available", detail: "You have version \(AppInfo.versionString).")
             ReleaseNotes(text: release.notes)
             buttons(secondary: ("Later", dismiss), primary: ("Download and Install", service.download))
-        case let .downloading(_, version):
+        case .downloading(_, let version):
             ProgressRow(text: "Downloading and verifying Revzen \(version)…")
-        case let .ready(_, version):
+        case .ready(_, let version):
             Message(title: "Revzen \(version) is ready", detail: "Revzen quits, installs the update and opens again.")
             buttons(secondary: ("Later", close), primary: ("Install and Relaunch", service.installAndRelaunch))
-        case let .failed(message):
+        case .failed(let message):
             Message(title: "The update did not complete", detail: message)
             buttons(primary: ("OK", dismiss))
         }

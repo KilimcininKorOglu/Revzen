@@ -51,7 +51,8 @@ enum WindowService {
     static func windows(of pid: pid_t, timeout: Float = AXElement.readTimeout) -> [AppWindow] {
         AXElement.application(pid, timeout: timeout).elements(kAXWindowsAttribute).compactMap { element in
             guard let minimized = element.bool(kAXMinimizedAttribute),
-                  minimized || element.string(kAXSubroleAttribute) == kAXStandardWindowSubrole else { return nil }
+                minimized || element.string(kAXSubroleAttribute) == kAXStandardWindowSubrole
+            else { return nil }
             return AppWindow(element: element, pid: pid, isMinimized: minimized)
         }
     }
@@ -61,8 +62,9 @@ enum WindowService {
     /// or dialog, and when the app has no focused window.
     static func focusedWindow(of pid: pid_t) -> AXElement? {
         guard let window = AXElement.application(pid).element(kAXFocusedWindowAttribute),
-              window.bool(kAXMinimizedAttribute) == false,
-              window.string(kAXSubroleAttribute) == kAXStandardWindowSubrole else { return nil }
+            window.bool(kAXMinimizedAttribute) == false,
+            window.string(kAXSubroleAttribute) == kAXStandardWindowSubrole
+        else { return nil }
         return window
     }
 }
@@ -98,8 +100,10 @@ extension WindowService {
             DebugLog.event(.window, "cycle pid \(pid): no window to switch to (\(windows.count) windows)")
             return
         }
-        DebugLog.event(.window, "cycle pid \(pid): \(current.map(String.init) ?? "none") -> \(next) "
-            + "of \(windows.count), \(windows[next].logName)")
+        DebugLog.event(
+            .window,
+            "cycle pid \(pid): \(current.map(String.init) ?? "none") -> \(next) "
+                + "of \(windows.count), \(windows[next].logName)")
         focus(windows[next].window)
     }
 

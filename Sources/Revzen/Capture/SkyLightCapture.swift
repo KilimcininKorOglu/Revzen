@@ -10,9 +10,10 @@ import Foundation
 /// and the preview uses the cached image or the app icon.
 enum SkyLightCapture {
     private typealias MainConnectionID = @convention(c) () -> Int32
-    private typealias CaptureWindowList = @convention(c) (
-        Int32, UnsafeMutablePointer<CGWindowID>, Int, UInt32
-    ) -> Unmanaged<CFArray>?
+    private typealias CaptureWindowList =
+        @convention(c) (
+            Int32, UnsafeMutablePointer<CGWindowID>, Int, UInt32
+        ) -> Unmanaged<CFArray>?
 
     /// C function pointers into a system framework, immutable after lookup.
     private struct Functions: @unchecked Sendable {
@@ -26,8 +27,9 @@ enum SkyLightCapture {
 
     private static let functions: Functions? = {
         guard let handle = dlopen("/System/Library/PrivateFrameworks/SkyLight.framework/SkyLight", RTLD_LAZY),
-              let connection = dlsym(handle, "CGSMainConnectionID"),
-              let capture = dlsym(handle, "CGSHWCaptureWindowList") else {
+            let connection = dlsym(handle, "CGSMainConnectionID"),
+            let capture = dlsym(handle, "CGSHWCaptureWindowList")
+        else {
             DebugLog.error(.capture, "SkyLight window capture is not available, minimized windows use the cache")
             return nil
         }

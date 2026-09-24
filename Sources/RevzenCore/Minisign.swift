@@ -29,9 +29,10 @@ public enum Minisign {
         /// Takes the contents of a `.pub` file, or only its base64 line.
         public init(_ text: String) throws {
             guard let line = Self.keyLine(text),
-                  let bytes = Data(base64Encoded: line), bytes.count == 42,
-                  bytes.prefix(2) == Data("Ed".utf8),
-                  let key = try? Curve25519.Signing.PublicKey(rawRepresentation: bytes.suffix(32)) else {
+                let bytes = Data(base64Encoded: line), bytes.count == 42,
+                bytes.prefix(2) == Data("Ed".utf8),
+                let key = try? Curve25519.Signing.PublicKey(rawRepresentation: bytes.suffix(32))
+            else {
                 throw Failure.malformedPublicKey
             }
             keyID = bytes.dropFirst(2).prefix(8)
@@ -75,9 +76,10 @@ public enum Minisign {
         init(_ text: String) throws {
             let lines = text.split(whereSeparator: \.isNewline).map(String.init)
             guard lines.count >= 4,
-                  let bytes = Data(base64Encoded: lines[1]), bytes.count == 74,
-                  lines[2].hasPrefix(Self.trustedPrefix),
-                  let global = Data(base64Encoded: lines[3]), global.count == 64 else {
+                let bytes = Data(base64Encoded: lines[1]), bytes.count == 74,
+                lines[2].hasPrefix(Self.trustedPrefix),
+                let global = Data(base64Encoded: lines[3]), global.count == 64
+            else {
                 throw Failure.malformedSignature
             }
             algorithm = bytes.prefix(2)

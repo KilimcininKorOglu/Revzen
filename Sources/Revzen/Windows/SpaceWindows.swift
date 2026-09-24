@@ -22,8 +22,9 @@ enum SpaceWindows {
         let deadline = Date().addingTimeInterval(scanDeadline)
         for elementID in 0..<maxElementID where Date() < deadline {
             guard let element = AXElement.remote(pid: pid, elementID: elementID),
-                  element.string(kAXSubroleAttribute) == kAXStandardWindowSubrole,
-                  let id = element.windowID(), wanted.remove(id) != nil else { continue }
+                element.string(kAXSubroleAttribute) == kAXStandardWindowSubrole,
+                let id = element.windowID(), wanted.remove(id) != nil
+            else { continue }
             found.append(AppWindow(element: element, pid: pid, isMinimized: false))
             if wanted.isEmpty { break }
         }
@@ -40,10 +41,11 @@ enum SpaceWindows {
 
     private static func info(_ entry: [String: Any]) -> WindowInfo? {
         guard let id = entry[kCGWindowNumber as String] as? UInt32,
-              let pid = entry[kCGWindowOwnerPID as String] as? Int32,
-              let layer = entry[kCGWindowLayer as String] as? Int,
-              let boundsDict = entry[kCGWindowBounds as String] as? NSDictionary,
-              let bounds = CGRect(dictionaryRepresentation: boundsDict) else { return nil }
+            let pid = entry[kCGWindowOwnerPID as String] as? Int32,
+            let layer = entry[kCGWindowLayer as String] as? Int,
+            let boundsDict = entry[kCGWindowBounds as String] as? NSDictionary,
+            let bounds = CGRect(dictionaryRepresentation: boundsDict)
+        else { return nil }
         let onScreen = entry[kCGWindowIsOnscreen as String] as? Bool ?? false
         return WindowInfo(id: id, ownerPID: pid, layer: layer, bounds: bounds, isOnScreen: onScreen)
     }

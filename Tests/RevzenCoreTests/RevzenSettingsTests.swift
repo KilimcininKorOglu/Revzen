@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import RevzenCore
 
 @Suite("RevzenSettings")
@@ -36,9 +37,11 @@ struct RevzenSettingsTests {
         #expect(try store.load() == saved)
     }
 
-    @Test("The hover delay stays inside the slider range, whatever the source", arguments: [
-        (-50, 0), (0, 0), (1200, 1200), (99_999, 2000)
-    ])
+    @Test(
+        "The hover delay stays inside the slider range, whatever the source",
+        arguments: [
+            (-50, 0), (0, 0), (1200, 1200), (99_999, 2000)
+        ])
     func hoverDelayIsClamped(input: Int, expected: Int) {
         var settings = RevzenSettings(hoverDelayMs: input)
         #expect(settings.hoverDelayMs == expected)

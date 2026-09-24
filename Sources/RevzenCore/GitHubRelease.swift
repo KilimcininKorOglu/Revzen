@@ -29,7 +29,8 @@ public struct GitHubRelease: Decodable, Sendable, Equatable {
     /// The DMG and its minisign signature, or nil when either is missing.
     public func installAssets(dmgName: String) -> (dmg: ReleaseAsset, signature: ReleaseAsset)? {
         guard let dmg = assets.first(where: { $0.name == dmgName }),
-              let signature = assets.first(where: { $0.name == dmgName + ".minisig" }) else { return nil }
+            let signature = assets.first(where: { $0.name == dmgName + ".minisig" })
+        else { return nil }
         return (dmg, signature)
     }
 }

@@ -97,7 +97,8 @@ extension AXElement {
     func element(at point: CGPoint) -> AXElement? {
         var hit: AXUIElement?
         guard AXUIElementCopyElementAtPosition(raw, Float(point.x), Float(point.y), &hit) == .success,
-              let hit else { return nil }
+            let hit
+        else { return nil }
         return AXElement(hit, timeout: timeout)
     }
 }
