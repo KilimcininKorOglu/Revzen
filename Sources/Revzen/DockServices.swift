@@ -27,12 +27,17 @@ final class DockServices {
         preview.start()
         snapshots.start()
         let snapshots = snapshots
-        let clicks = DockClickHandler(dock: dock, directory: directory) { pid in
-            await snapshots.snapshot(pid: pid)
-        }
+        let preview = preview
+        let clicks = DockClickHandler(
+            dock: dock,
+            directory: directory,
+            beforeMinimize: { pid in await snapshots.snapshot(pid: pid) },
+            onMenuClick: { Task { @MainActor in preview.dockMenuOpened() } }
+        )
         let scrolls = DockScrollHandler(dock: dock, directory: directory)
         let pointer = preview.pointer
-        let tap = EventTap(events: [.leftMouseDown, .leftMouseUp, .mouseMoved, .scrollWheel]) { type, event in
+        let events: [CGEventType] = [.leftMouseDown, .leftMouseUp, .rightMouseDown, .mouseMoved, .scrollWheel]
+        let tap = EventTap(events: events) { type, event in
             switch type {
             case .mouseMoved:
                 pointer.moved(to: event.location)

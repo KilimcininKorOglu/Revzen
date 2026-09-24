@@ -16,15 +16,29 @@ final class DockClickHandler: Sendable {
 
     /// Runs before the windows are minimized, while they are still capturable.
     private let beforeMinimize: @Sendable (pid_t) async -> Void
+    /// Runs when a click opens the Dock menu of an app icon.
+    private let onMenuClick: @Sendable () -> Void
 
-    init(dock: DockAX, directory: AppDirectory, beforeMinimize: @escaping @Sendable (pid_t) async -> Void) {
+    init(
+        dock: DockAX,
+        directory: AppDirectory,
+        beforeMinimize: @escaping @Sendable (pid_t) async -> Void,
+        onMenuClick: @escaping @Sendable () -> Void
+    ) {
         self.dock = dock
         self.directory = directory
         self.beforeMinimize = beforeMinimize
+        self.onMenuClick = onMenuClick
     }
 
     func handle(_ type: CGEventType, _ event: CGEvent) -> Bool {
         switch type {
+        case .leftMouseDown where event.flags.contains(.maskControl), .rightMouseDown:
+            // Control-click and right click open the Dock menu. The Dock keeps the click.
+            if dock.appItem(at: event.location) != nil {
+                onMenuClick()
+            }
+            return false
         case .leftMouseDown:
             let swallow = handleMouseDown(event)
             swallowNextUp.store(swallow, ordering: .relaxed)
