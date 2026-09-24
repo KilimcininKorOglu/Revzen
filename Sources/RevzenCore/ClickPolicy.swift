@@ -45,12 +45,30 @@ public enum ClickPolicy {
 /// app activation count at the click, and any later activation changes it.
 /// A user who switches away and back expects the click to minimize again.
 public struct ClickMinimizeMemory<Window: Sendable>: Sendable {
-    private var entries: [Int32: (window: Window, generation: Int)] = [:]
+    private struct Entry: Sendable {
+        let window: Window
+        let generation: Int
+        let token: Int
+    }
+
+    private var entries: [Int32: Entry] = [:]
+    private var lastToken = 0
 
     public init() {}
 
-    public mutating func record(_ window: Window, pid: Int32, generation: Int) {
-        entries[pid] = (window, generation)
+    /// Remembers the window and returns a token for this click. The minimize
+    /// runs later, and only while `isLatest` still holds for the token.
+    @discardableResult
+    public mutating func record(_ window: Window, pid: Int32, generation: Int) -> Int {
+        lastToken += 1
+        entries[pid] = Entry(window: window, generation: generation, token: lastToken)
+        return lastToken
+    }
+
+    /// True while the click with `token` is the last one that minimized a
+    /// window of the app, and no restore or other click replaced it.
+    public func isLatest(_ token: Int, for pid: Int32) -> Bool {
+        entries[pid]?.token == token
     }
 
     /// The remembered window of the app, or nil when there is none or the

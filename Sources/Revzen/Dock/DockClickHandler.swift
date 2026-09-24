@@ -112,11 +112,20 @@ extension DockClickHandler {
         return window
     }
 
+    /// The AX write waits for the snapshot. By then a later click can have
+    /// restored or replaced the window, so the job runs only for the latest
+    /// click. The check runs on `actions`, in order with the restore job.
     private func minimize(_ window: AXElement, pid: pid_t, generation: Int) -> Bool {
-        clickMinimized.withLock { $0.record(window, pid: pid, generation: generation) }
-        Task { [beforeMinimize, actions] in
+        let token = clickMinimized.withLock { $0.record(window, pid: pid, generation: generation) }
+        Task { [self] in
             await beforeMinimize(pid)
-            actions.async { WindowService.minimize(window, pid: pid) }
+            actions.async { [self] in
+                guard clickMinimized.withLock({ $0.isLatest(token, for: pid) }) else {
+                    DebugLog.event(.click, "pid \(pid): minimize dropped, a later click restored or replaced the window")
+                    return
+                }
+                WindowService.minimize(window, pid: pid)
+            }
         }
         return true
     }

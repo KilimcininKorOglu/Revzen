@@ -88,4 +88,18 @@ struct ClickMinimizeMemoryTests {
         memory.record("terminal", pid: 42, generation: 3)
         #expect(memory.window(of: 42, generation: 3) == "terminal")
     }
+
+    @Test("A deferred minimize runs only while its click is the latest for the window")
+    func tokenOfLatestClick() {
+        var memory = ClickMinimizeMemory<String>()
+        let first = memory.record("editor", pid: 42, generation: 3)
+        #expect(memory.isLatest(first, for: 42))
+        // A second click on the same window replaces the first click.
+        let second = memory.record("editor", pid: 42, generation: 3)
+        #expect(!memory.isLatest(first, for: 42))
+        #expect(memory.isLatest(second, for: 42))
+        // A restore forgets the window, so its pending minimize is dropped.
+        memory.forget(42)
+        #expect(!memory.isLatest(second, for: 42))
+    }
 }
