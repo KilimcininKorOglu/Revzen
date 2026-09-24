@@ -161,6 +161,9 @@ extension UpdateService {
         DebugLog.event(.update, "installing \(app.path) and relaunching")
         perform("install") { [self] in
             do {
+                // The cache folder is writable by every process of the user,
+                // so the staged app is checked again right before the swap.
+                try CodeCheck.verify(app: app, version: version)
                 try await AppReplacer.installAndRelaunch(app)
             } catch AppReplacer.Failure.cancelled {
                 DebugLog.event(.update, "administrator prompt cancelled, \(version) stays ready to install")
