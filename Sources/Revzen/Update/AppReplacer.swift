@@ -17,18 +17,35 @@ enum AppReplacer {
         NSApp.terminate(nil)
     }
 
+    /// Copies the new app next to the installed one, then swaps the two with
+    /// renames. The installed app stays in place until the copy is complete,
+    /// and a failed swap moves it back.
+    private static let swapScript = """
+        new="$2.new"
+        old="$2.old"
+        /bin/rm -rf "$new" "$old"
+        /usr/bin/ditto "$1" "$new" || { /bin/rm -rf "$new"; exit 1; }
+        /bin/mv "$2" "$old" || { /bin/rm -rf "$new"; exit 1; }
+        if ! /bin/mv "$new" "$2"; then
+          /bin/mv "$old" "$2"
+          /bin/rm -rf "$new"
+          exit 1
+        fi
+        /bin/rm -rf "$old"
+        """
+
     /// Asks for an administrator password, for an app in a folder that the
-    /// user cannot write. The paths reach the shell only as quoted forms.
+    /// user cannot write. The script and the paths reach the shell only as
+    /// quoted forms.
     private static func replaceAsAdministrator(_ target: URL, with staged: URL) async throws {
         let script = [
             "on run argv",
-            "set source to quoted form of item 1 of argv",
-            "set destination to quoted form of item 2 of argv",
-            "do shell script \"/bin/rm -rf \" & destination & \" && /usr/bin/ditto \" & source & \" \" & destination "
-                + "with administrator privileges",
+            "set command to \"/bin/sh -c \" & quoted form of item 1 of argv & \" sh \" "
+                + "& quoted form of item 2 of argv & \" \" & quoted form of item 3 of argv",
+            "do shell script command with administrator privileges",
             "end run"
         ]
-        let arguments = script.flatMap { ["-e", $0] } + [staged.path, target.path]
+        let arguments = script.flatMap { ["-e", $0] } + [swapScript, staged.path, target.path]
         _ = try await ProcessRunner.run("/usr/bin/osascript", arguments)
     }
 
