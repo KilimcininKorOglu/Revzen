@@ -58,7 +58,10 @@ struct UpdateView: View {
 
     @ViewBuilder private var content: some View {
         switch service.state {
-        case .idle, .checking:
+        case .idle:
+            Message(title: "Revzen \(AppInfo.versionString)", detail: "No update check is running.")
+            buttons(secondary: ("Close", close), primary: ("Check Now", service.checkNow))
+        case .checking:
             ProgressRow(text: "Checking for updates…")
         case .upToDate:
             Message(title: "Revzen is up to date", detail: "Version \(AppInfo.versionString) is the latest release.")

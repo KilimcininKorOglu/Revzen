@@ -31,6 +31,8 @@ final class UpdateService {
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var isAutoCheckEnabled: () -> Bool = { false }
     @ObservationIgnored private var poller: Task<Void, Never>?
+    /// A manual check arrived while a scheduled check was running.
+    @ObservationIgnored private var joinedManual = false
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -96,7 +98,7 @@ extension UpdateService {
 
     private func check(manual: Bool) async {
         guard !isBusy else {
-            if manual { onPresent?() }
+            if manual { joinRunningStep() }
             return
         }
         state = .checking
@@ -108,11 +110,25 @@ extension UpdateService {
         lastCheck = now
         defaults.set(now, forKey: Self.lastCheckKey)
         do {
-            apply(try await UpdateChecker.latestRelease(), manual: manual)
+            let release = try await UpdateChecker.latestRelease()
+            apply(release, manual: takeManual(manual))
         } catch {
             DebugLog.error(.update, "update check failed: \(error.localizedDescription)")
-            state = manual ? .failed(error.localizedDescription) : .idle
+            state = takeManual(manual) ? .failed(error.localizedDescription) : .idle
         }
+    }
+
+    /// Shows the window of the running step. A manual check that joins a
+    /// scheduled check gets the result of that check.
+    private func joinRunningStep() {
+        if state == .checking { joinedManual = true }
+        onPresent?()
+    }
+
+    /// True when this check or a manual check that joined it shows the result.
+    private func takeManual(_ manual: Bool) -> Bool {
+        defer { joinedManual = false }
+        return manual || joinedManual
     }
 
     private func apply(_ release: GitHubRelease, manual: Bool) {
