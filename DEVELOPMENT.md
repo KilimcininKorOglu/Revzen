@@ -50,7 +50,7 @@ Before a new version replaces the running app, the updater checks:
 
 The decisions of these checks, and the rule that only a newer release is offered, are in `ReleaseVerification` in `RevzenCore`, with tests in `ReleaseVerificationTests`. The app target only reads the files, mounts the image and runs `SecStaticCodeCheckValidity`.
 
-Downloads stay in `~/Library/Caches/Revzen/updates` and are deleted after seven days.
+Downloads go to `~/Library/Caches/Revzen/updates/<version>`. At launch and before each download, the updater deletes the folders of releases that are not newer than the running app, and folders older than seven days.
 
 ## Releasing
 
