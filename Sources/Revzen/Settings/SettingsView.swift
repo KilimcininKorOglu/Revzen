@@ -11,10 +11,12 @@ struct SettingsView: View {
             GeneralSection(model: model, loginItem: model.loginItem)
             ExcludedAppsSection(excluded: $model.settings.excludedBundleIDs)
             PermissionsSection(permissions: model.permissions)
+            UpdatesSection(autoCheck: $model.settings.autoCheckUpdates, updates: model.updates)
+            AboutSection()
         }
         .formStyle(.grouped)
-        .frame(width: 480)
-        .fixedSize(horizontal: false, vertical: true)
+        // The grouped form scrolls, so the window also fits a small screen.
+        .frame(width: 480, height: 640)
         .onAppear {
             model.permissions.refresh()
             model.loginItem.refresh()
