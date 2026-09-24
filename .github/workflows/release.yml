@@ -1,0 +1,127 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Check that the tag matches Info.plist
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          PLIST_VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Resources/Info.plist)
+          if [ "v${PLIST_VERSION}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match Info.plist version ${PLIST_VERSION}"
+            exit 1
+          fi
+
+      - name: Install minisign + create-dmg
+        run: brew install minisign create-dmg
+
+      - name: Import Developer ID certificate
+        env:
+          CERT_P12_B64: ${{ secrets.APPLE_DEVELOPER_ID_CERT_P12 }}
+          CERT_PWD:     ${{ secrets.APPLE_DEVELOPER_ID_CERT_PWD }}
+        run: |
+          set -euo pipefail
+          echo "$CERT_P12_B64" | base64 -d > /tmp/cert.p12
+          KEYCHAIN=build.keychain
+          security create-keychain -p actions "$KEYCHAIN"
+          security default-keychain -s "$KEYCHAIN"
+          security unlock-keychain -p actions "$KEYCHAIN"
+          security set-keychain-settings -t 3600 -l "$KEYCHAIN"
+          security import /tmp/cert.p12 \
+            -k "$KEYCHAIN" -P "$CERT_PWD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k actions "$KEYCHAIN"
+          rm -f /tmp/cert.p12
+
+      - name: Configure notarytool profile
+        env:
+          APPLE_ID:        ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID:   ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PWD:   ${{ secrets.APPLE_APP_SPECIFIC_PWD }}
+        run: |
+          xcrun notarytool store-credentials revzen-notary \
+            --apple-id  "$APPLE_ID" \
+            --team-id   "$APPLE_TEAM_ID" \
+            --password  "$APPLE_APP_PWD"
+
+      - name: Install minisign private key
+        env:
+          MINISIGN_KEY_B64: ${{ secrets.MINISIGN_KEY }}
+        run: |
+          mkdir -p ~/.minisign
+          echo "$MINISIGN_KEY_B64" | base64 -d > ~/.minisign/splitwg.key
+          chmod 600 ~/.minisign/splitwg.key
+
+      # The app verifies the trusted comment "Revzen <version>", which
+      # `make sign-minisign` writes. Sign only through the Makefile.
+      - name: Build, sign, notarize, minisign
+        env:
+          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_KEY_PWD }}
+        run: make release
+
+      - name: Verify artifacts
+        run: |
+          set -euo pipefail
+          lipo -info build/Revzen.app/Contents/MacOS/Revzen | grep -q "x86_64 arm64\|arm64 x86_64"
+          spctl -a -vvv -t open --context context:primary-signature dist/Revzen.dmg
+          xcrun stapler validate dist/Revzen.dmg
+          minisign -V -p Resources/minisign.pub -m dist/Revzen.dmg
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          files: |
+            dist/Revzen.dmg
+            dist/Revzen.dmg.minisig
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
+      - name: Bump Homebrew cask in KilimcininKorOglu/homebrew-tap
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HOMEBREW_TAP_TOKEN:-}" ]; then
+            echo "::error::HOMEBREW_TAP_TOKEN secret is not set; the cask was not bumped."
+            exit 1
+          fi
+          VERSION="${GITHUB_REF_NAME#v}"
+          SHA256=$(shasum -a 256 dist/Revzen.dmg | awk '{print $1}')
+          WORK=$(mktemp -d)
+          git clone --depth 1 \
+            "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/KilimcininKorOglu/homebrew-tap.git" \
+            "$WORK/tap"
+          CASK="$WORK/tap/Casks/revzen.rb"
+          /usr/bin/sed -i '' -E \
+            -e "s/^  version \"[^\"]*\"/  version \"${VERSION}\"/" \
+            -e "s/^  sha256 \"[0-9a-f]{64}\"/  sha256 \"${SHA256}\"/" \
+            "$CASK"
+          cd "$WORK/tap"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "Cask already at ${VERSION}; nothing to commit."
+            exit 0
+          fi
+          git add Casks/revzen.rb
+          git commit -m "revzen ${VERSION}"
+          git push origin HEAD:main

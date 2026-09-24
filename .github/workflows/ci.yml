@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build:
     name: Build, test and lint
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Lint
@@ -24,5 +24,7 @@ jobs:
           make lint
       - name: Test
         run: make test
-      - name: Build app bundle
-        run: make app SIGN_IDENTITY=-
+      - name: Build universal app bundle
+        run: |
+          make app SIGN_IDENTITY=-
+          lipo -info build/Revzen.app/Contents/MacOS/Revzen | grep -q "x86_64 arm64\|arm64 x86_64"
