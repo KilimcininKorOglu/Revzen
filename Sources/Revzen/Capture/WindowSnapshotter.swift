@@ -70,7 +70,9 @@ final class WindowSnapshotter {
         let visible = windows.filter { !$0.window.isMinimized }.compactMap(\.windowID)
         let minimized = windows.filter(\.window.isMinimized).compactMap(\.windowID)
         var images = await capture.capture(visible, maxPointSize: size, scale: scale)
-        images.merge(await capture.captureMinimized(minimized, maxPointSize: size, scale: scale)) { live, _ in live }
+        if !Task.isCancelled {
+            images.merge(await capture.captureMinimized(minimized, maxPointSize: size, scale: scale)) { live, _ in live }
+        }
         for (id, image) in images {
             cache.insert(image, for: id)
         }

@@ -7,7 +7,9 @@ actor CaptureService {
     /// Captures each window, scaled to fit `maxPointSize` at `scale` pixels
     /// per point. Windows on other Spaces are captured too. Windows that
     /// ScreenCaptureKit does not list are missing from the result. Callers
-    /// leave minimized windows out, because their capture is empty.
+    /// leave minimized windows out, because their capture is empty. A
+    /// cancelled task stops before the next window, for example when the
+    /// preview it belongs to was replaced.
     func capture(_ ids: [CGWindowID], maxPointSize: CGSize, scale: CGFloat) async -> [CGWindowID: CGImage] {
         guard CGPreflightScreenCaptureAccess(), !ids.isEmpty else { return [:] }
         let content: SCShareableContent
@@ -20,6 +22,10 @@ actor CaptureService {
         let wanted = Set(ids)
         var images: [CGWindowID: CGImage] = [:]
         for window in content.windows where wanted.contains(window.windowID) {
+            guard !Task.isCancelled else {
+                DebugLog.event(.capture, "capture cancelled after \(images.count) of \(ids.count) windows")
+                return images
+            }
             if let image = await capture(window, maxPointSize: maxPointSize, scale: scale) {
                 images[window.windowID] = image
             }
@@ -64,6 +70,10 @@ extension CaptureService {
         guard CGPreflightScreenCaptureAccess(), !ids.isEmpty else { return [:] }
         var images: [CGWindowID: CGImage] = [:]
         for id in ids {
+            guard !Task.isCancelled else {
+                DebugLog.event(.capture, "minimized capture cancelled after \(images.count) of \(ids.count) windows")
+                return images
+            }
             guard let full = SkyLightCapture.image(of: id) else { continue }
             images[id] = Self.scaled(full, toFit: maxPointSize, scale: scale)
         }
