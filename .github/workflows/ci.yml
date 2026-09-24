@@ -18,10 +18,21 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # A fixed SwiftLint release, checked against its SHA-256, so a new
+      # upstream release cannot add rules that fail CI without a commit here.
+      # Keep the version in step with SWIFTLINT_VERSION in the Makefile.
       - name: Lint
+        env:
+          SWIFTLINT_URL: https://github.com/realm/SwiftLint/releases/download/0.65.1/portable_swiftlint.zip
+          SWIFTLINT_SHA256: c1e429b0599cf1b516f369a2d9ec04eaf0e436f3c12b637df8851fa52ff694d0
         run: |
-          brew install swiftlint
-          make lint
+          set -euo pipefail
+          TOOLS="${RUNNER_TEMP}/swiftlint"
+          mkdir -p "$TOOLS"
+          curl -fsSL -o "$TOOLS/swiftlint.zip" "$SWIFTLINT_URL"
+          echo "${SWIFTLINT_SHA256}  $TOOLS/swiftlint.zip" | shasum -a 256 -c -
+          unzip -q "$TOOLS/swiftlint.zip" -d "$TOOLS"
+          PATH="$TOOLS:$PATH" make lint SWIFTLINT_VERSION_CHECK=error
       - name: Test
         run: make test
       - name: Build universal app bundle

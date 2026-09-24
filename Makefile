@@ -26,7 +26,18 @@ build:
 test:
 	swift test
 
+# CI installs exactly this SwiftLint release (.github/workflows/ci.yml).
+# A local build with another version warns, because a newer SwiftLint can
+# add rules that CI does not have yet. SWIFTLINT_VERSION_CHECK=error fails.
+SWIFTLINT_VERSION       := 0.65.1
+SWIFTLINT_VERSION_CHECK ?= warn
+
 lint:
+	@installed=$$(swiftlint version); \
+	if [ "$$installed" != "$(SWIFTLINT_VERSION)" ]; then \
+		echo "$(SWIFTLINT_VERSION_CHECK): SwiftLint $$installed is installed, the project uses $(SWIFTLINT_VERSION)" >&2; \
+		[ "$(SWIFTLINT_VERSION_CHECK)" != error ] || exit 1; \
+	fi
 	swiftlint lint --strict --quiet
 
 # Regenerates Resources/AppIcon.icns. The result is committed, so builds do

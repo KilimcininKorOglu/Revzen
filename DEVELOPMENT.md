@@ -6,7 +6,7 @@ This document covers building, testing and releasing Revzen. For installation an
 
 - macOS 15 or later
 - Xcode or the Swift toolchain with Swift 6
-- [SwiftLint](https://github.com/realm/SwiftLint) for `make lint`
+- [SwiftLint](https://github.com/realm/SwiftLint) 0.65.1 for `make lint`. CI uses exactly this release, and `make lint` warns when another version is installed. To move to a newer release, update `SWIFTLINT_VERSION` in the `Makefile` and the URL and SHA-256 in `.github/workflows/ci.yml` together.
 - [create-dmg](https://github.com/create-dmg/create-dmg) for `make dmg`
 - [minisign](https://jedisct1.github.io/minisign/) for `make release`
 
