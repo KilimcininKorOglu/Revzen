@@ -14,9 +14,13 @@ final class DockClickHandler: Sendable {
     /// AX writes block until the target app answers, so they run off the tap thread.
     private let actions = DispatchQueue(label: "com.kilimcininkoroglu.revzen.window-actions", qos: .userInteractive)
 
-    init(dock: DockAX, directory: AppDirectory) {
+    /// Runs before the windows are minimized, while they are still capturable.
+    private let beforeMinimize: @Sendable (pid_t) async -> Void
+
+    init(dock: DockAX, directory: AppDirectory, beforeMinimize: @escaping @Sendable (pid_t) async -> Void) {
         self.dock = dock
         self.directory = directory
+        self.beforeMinimize = beforeMinimize
     }
 
     func handle(_ type: CGEventType, _ event: CGEvent) -> Bool {
@@ -45,7 +49,11 @@ final class DockClickHandler: Sendable {
         case .passThrough:
             return false
         case .minimizeAll:
-            actions.async { WindowService.setAllMinimized(true, of: app.pid) }
+            let pid = app.pid
+            Task { [beforeMinimize, actions] in
+                await beforeMinimize(pid)
+                actions.async { WindowService.setAllMinimized(true, of: pid) }
+            }
             return true
         case .restoreAll:
             // The Dock click stays: the Dock activates the app and restores one

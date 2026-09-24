@@ -7,7 +7,7 @@ import RevzenCore
 final class PreviewController {
     private let dock: DockAX
     private let directory: AppDirectory
-    private let capture = CaptureService()
+    private let snapshots: WindowSnapshotter
     private let hoverDelay: @MainActor () -> Duration
     private let model = PreviewModel()
     private lazy var panel = PreviewPanel(model: model)
@@ -20,9 +20,15 @@ final class PreviewController {
     private var anchor: DockItem?
     private var pending: Task<Void, Never>?
 
-    init(dock: DockAX, directory: AppDirectory, hoverDelay: @escaping @MainActor () -> Duration) {
+    init(
+        dock: DockAX,
+        directory: AppDirectory,
+        snapshots: WindowSnapshotter,
+        hoverDelay: @escaping @MainActor () -> Duration
+    ) {
         self.dock = dock
         self.directory = directory
+        self.snapshots = snapshots
         self.hoverDelay = hoverDelay
         model.onSelect = { [weak self] window in self?.select(window) }
         model.onClose = { [weak self] window in self?.close(window) }
@@ -78,10 +84,10 @@ final class PreviewController {
             edge: edge,
             available: edge.isVertical ? screen.cgFrame.height : screen.cgFrame.width
         )
-        // Images of windows that are still listed stay until the new capture
-        // arrives, so a refresh after a close does not flicker.
-        let ids = Set(windows.compactMap(\.windowID))
-        model.images = model.images.filter { ids.contains($0.key) }
+        // Cached images show at once: the last live image of a minimized
+        // window, and the previous image of a live window until the new
+        // capture arrives.
+        model.images = snapshots.cachedImages(for: windows.compactMap(\.windowID))
         model.windows = windows
         model.edge = edge
         model.layout = layout
@@ -92,8 +98,7 @@ final class PreviewController {
     }
 
     private func loadImages(for windows: [PreviewWindow], scale: CGFloat) async {
-        let ids = windows.filter { !$0.window.isMinimized }.compactMap(\.windowID)
-        let images = await capture.capture(ids, maxPointSize: PreviewLayout.maxImageSize, scale: scale)
+        let images = await snapshots.captureLive(windows, scale: scale)
         guard !Task.isCancelled, model.windows == windows else { return }
         model.images.merge(images) { _, new in new }
     }
@@ -114,6 +119,9 @@ final class PreviewController {
     private func close(_ window: PreviewWindow) {
         guard let anchor, let app = directory.app(forBundleURL: anchor.appURL) else { return }
         pending?.cancel()
+        if let id = window.windowID {
+            snapshots.forget(id)
+        }
         pending = Task { [weak self] in
             await Task.detached { WindowService.close(window.window) }.value
             do {
