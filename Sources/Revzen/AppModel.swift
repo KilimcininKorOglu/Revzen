@@ -1,9 +1,6 @@
 import AppKit
-import OSLog
 import Observation
 import RevzenCore
-
-let log = Logger(subsystem: "com.kilimcininkoroglu.revzen", category: "app")
 
 /// Owns the settings, the permission state and the services that act on the Dock.
 @MainActor

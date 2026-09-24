@@ -7,8 +7,9 @@ import Synchronization
 /// every preview and window action. Settings turns it on; it is off by
 /// default, and a disabled log does not build its messages.
 ///
-/// Lines go to OSLog (category "debug", level debug) and to
-/// `~/Library/Logs/Revzen/revzen.log`. The file moves to `revzen.log.1`
+/// Events go to OSLog (category "debug", level debug) and to
+/// `~/Library/Logs/Revzen/revzen.log`. Errors always go to OSLog at error
+/// level, with the area as the category. The file moves to `revzen.log.1`
 /// when it passes 5 MB, so the log never holds more than about 10 MB.
 enum DebugLog {
     enum Area: String {
@@ -19,7 +20,8 @@ enum DebugLog {
         .appending(path: "Logs/Revzen/revzen.log")
 
     private static let enabled = Atomic<Bool>(false)
-    private static let logger = Logger(subsystem: "com.kilimcininkoroglu.revzen", category: "debug")
+    static let subsystem = "com.kilimcininkoroglu.revzen"
+    private static let logger = Logger(subsystem: subsystem, category: "debug")
     private static let writer = LogFileWriter(url: fileURL, maxSize: 5 * 1024 * 1024)
 
     static var isEnabled: Bool {
@@ -46,9 +48,14 @@ enum DebugLog {
     /// A failure always reaches OSLog at error level. The file gets it
     /// while the debug log is on, next to the events that led to it.
     static func error(_ area: Area, _ message: String) {
-        log.error("\(message, privacy: .public)")
+        logger(for: area).error("\(message, privacy: .public)")
         guard isEnabled else { return }
         writer.write(Date(), "[\(area.rawValue)] ERROR \(message)")
+    }
+
+    /// The OSLog logger for failures of one area.
+    static func logger(for area: Area) -> Logger {
+        Logger(subsystem: subsystem, category: area.rawValue)
     }
 }
 
@@ -85,7 +92,7 @@ private final class LogFileWriter: @unchecked Sendable {
                 handle = nil
                 // Report once per failure streak, not once per event.
                 if !failed {
-                    log.error("Debug log write failed: \(error.localizedDescription, privacy: .public)")
+                    DebugLog.logger(for: .app).error("Debug log write failed: \(error.localizedDescription, privacy: .public)")
                 }
                 failed = true
             }
