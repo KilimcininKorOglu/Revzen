@@ -58,8 +58,10 @@ final class PreviewController {
         updateTracking()
     }
 
+    /// A notification alone cancels nothing: the Dock also posts one when
+    /// the pointer moves from the icon into the panel, and the capture of
+    /// the open panel must finish. A new preview or a hide cancels.
     private func hoverChanged(_ item: DockItem?) {
-        pending?.cancel()
         let point = Self.pointerLocation
         let inside = item.map { Self.hitArea($0.frame).contains(point) } ?? false
         // Without a target the pointer may be on its way into the icon or the
@@ -90,6 +92,7 @@ final class PreviewController {
         DebugLog.event(.preview, "\(app.logName): preview in \(delay)")
         anchor = item
         updateTracking()
+        pending?.cancel()
         pending = Task { [weak self] in
             do {
                 try await Task.sleep(for: delay)
@@ -140,8 +143,12 @@ final class PreviewController {
 
     private func loadImages(for windows: [PreviewWindow], scale: CGFloat) async {
         let images = await snapshots.captureLive(windows, scale: scale)
-        guard !Task.isCancelled, model.windows == windows else { return }
+        guard !Task.isCancelled, model.windows == windows else {
+            DebugLog.event(.preview, "live images for \(images.count) windows discarded: the preview changed")
+            return
+        }
         model.images.merge(images) { _, new in new }
+        DebugLog.event(.preview, "live images for \(images.count) of \(windows.count) windows shown")
     }
 
     private func place(_ size: CGSize, anchor: DockItem, edge: DockEdge, screen: NSScreen) {
