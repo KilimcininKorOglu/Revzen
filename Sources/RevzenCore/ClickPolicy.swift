@@ -44,11 +44,23 @@ public enum ClickPolicy {
 /// An entry is valid only while the app stays frontmost: `generation` is the
 /// app activation count at the click, and any later activation changes it.
 /// A user who switches away and back expects the click to minimize again.
-public struct ClickMinimizeMemory<Window: Sendable>: Sendable {
+///
+/// After the minimize, macOS focuses another window of the app. That window
+/// is recorded, and when a later click finds another window focused, the user
+/// chose it (with a click, Command-backtick or Mission Control), so the click
+/// minimizes that window instead of restoring the remembered one.
+public struct ClickMinimizeMemory<Window: Sendable & Equatable>: Sendable {
+    /// The window macOS focused after the minimize.
+    private enum FocusAfter: Sendable {
+        case pending
+        case window(Window?)
+    }
+
     private struct Entry: Sendable {
         let window: Window
         let generation: Int
         let token: Int
+        var focusAfter = FocusAfter.pending
     }
 
     private var entries: [Int32: Entry] = [:]
@@ -80,6 +92,21 @@ public struct ClickMinimizeMemory<Window: Sendable>: Sendable {
             return nil
         }
         return entry.window
+    }
+
+    /// Records the window macOS focused after the minimize of the click with
+    /// `token`, or nil when it focused none. Ignored for an older click.
+    public mutating func recordFocusAfterMinimize(_ focused: Window?, pid: Int32, token: Int) {
+        guard entries[pid]?.token == token else { return }
+        entries[pid]?.focusAfter = .window(focused)
+    }
+
+    /// True when `focused` is not the window macOS focused after the
+    /// minimize: the user moved to another window since the click. False
+    /// while that window is not recorded yet, and with no focused window.
+    public func focusMoved(of pid: Int32, focused: Window?) -> Bool {
+        guard let focused, case .window(let after)? = entries[pid]?.focusAfter else { return false }
+        return focused != after
     }
 
     public mutating func forget(_ pid: Int32) {

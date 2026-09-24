@@ -15,6 +15,9 @@ final class DockClickHandler: Sendable {
     private let swallowNextUp = Atomic<Bool>(false)
     /// AX writes block until the target app answers, so they run off the tap thread.
     private let actions = DispatchQueue(label: "com.kilimcininkoroglu.revzen.window-actions", qos: .userInteractive)
+    /// Waits for the window macOS focuses after a minimize. A separate queue,
+    /// so the wait never delays a restore on `actions`.
+    private let focusWatch = DispatchQueue(label: "com.kilimcininkoroglu.revzen.focus-watch", qos: .utility)
     /// The window each app's last Dock click minimized, so the next click
     /// restores it instead of minimizing the window macOS focused next.
     private let clickMinimized = Mutex(ClickMinimizeMemory<AXElement>())
@@ -79,8 +82,8 @@ extension DockClickHandler {
         let generation = directory.activationGeneration
         // The AX reads are skipped when the answer cannot change the action.
         let active = !excluded && isFrontmost
-        let restorable = active ? clickMinimizedWindow(of: app.pid, generation: generation) : nil
-        let focused = active && restorable == nil ? WindowService.focusedWindow(of: app.pid) : nil
+        let focused = active ? WindowService.focusedWindow(of: app.pid) : nil
+        let restorable = active ? clickMinimizedWindow(of: app.pid, generation: generation, focused: focused) : nil
         let state = AppWindowState(
             isFrontmost: isFrontmost,
             hasFocusedWindow: focused != nil,
@@ -102,10 +105,16 @@ extension DockClickHandler {
     }
 
     /// The window that the previous click minimized, while it is still
-    /// minimized. A window that the user restored some other way is forgotten.
-    private func clickMinimizedWindow(of pid: pid_t, generation: Int) -> AXElement? {
+    /// minimized and the user did not move to another window of the app. A
+    /// window that the user restored some other way is forgotten.
+    private func clickMinimizedWindow(of pid: pid_t, generation: Int, focused: AXElement?) -> AXElement? {
         guard let window = clickMinimized.withLock({ $0.window(of: pid, generation: generation) }) else { return nil }
         guard window.bool(kAXMinimizedAttribute) == true else {
+            clickMinimized.withLock { $0.forget(pid) }
+            return nil
+        }
+        guard !clickMinimized.withLock({ $0.focusMoved(of: pid, focused: focused) }) else {
+            DebugLog.event(.click, "pid \(pid): another window was focused after the minimize, it is minimized instead")
             clickMinimized.withLock { $0.forget(pid) }
             return nil
         }
@@ -125,9 +134,35 @@ extension DockClickHandler {
                     return
                 }
                 WindowService.minimize(window, pid: pid)
+                watchFocus(after: window, pid: pid, token: token, deadline: .now() + Self.focusWait)
             }
         }
         return true
+    }
+
+    /// The longest wait for macOS to focus another window after a minimize.
+    /// Measured: about 400 ms, the length of the minimize animation.
+    private static let focusWait: DispatchTimeInterval = .seconds(2)
+
+    /// Records the window that macOS focuses after the minimize, or nil when
+    /// it focuses none before the deadline. Stops when a later click
+    /// replaced this one.
+    private func watchFocus(after minimized: AXElement, pid: pid_t, token: Int, deadline: DispatchTime) {
+        guard clickMinimized.withLock({ $0.isLatest(token, for: pid) }) else { return }
+        let focused = AXElement.application(pid, timeout: AXElement.actionTimeout).element(kAXFocusedWindowAttribute)
+        if let focused, focused != minimized {
+            clickMinimized.withLock { $0.recordFocusAfterMinimize(focused, pid: pid, token: token) }
+            DebugLog.event(.click, "pid \(pid): macOS focused another window after the minimize")
+            return
+        }
+        guard DispatchTime.now() < deadline else {
+            clickMinimized.withLock { $0.recordFocusAfterMinimize(nil, pid: pid, token: token) }
+            DebugLog.event(.click, "pid \(pid): no other window was focused after the minimize")
+            return
+        }
+        focusWatch.asyncAfter(deadline: .now() + .milliseconds(50)) { [self] in
+            watchFocus(after: minimized, pid: pid, token: token, deadline: deadline)
+        }
     }
 
     private func restore(_ window: AXElement, pid: pid_t) -> Bool {

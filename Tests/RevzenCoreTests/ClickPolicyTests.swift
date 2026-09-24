@@ -98,8 +98,38 @@ struct ClickMinimizeMemoryTests {
         let second = memory.record("editor", pid: 42, generation: 3)
         #expect(!memory.isLatest(first, for: 42))
         #expect(memory.isLatest(second, for: 42))
+        // The focus seen after the first click's minimize is not recorded.
+        memory.recordFocusAfterMinimize("terminal", pid: 42, token: first)
+        #expect(!memory.focusMoved(of: 42, focused: "browser"))
         // A restore forgets the window, so its pending minimize is dropped.
         memory.forget(42)
         #expect(!memory.isLatest(second, for: 42))
+    }
+
+    /// macOS focused `after` once the minimize of "alpha" ended ("pending":
+    /// not recorded yet), and `focused` is focused at the next click.
+    struct FocusCase: Sendable, CustomTestStringConvertible {
+        let after: String??
+        let focused: String?
+        let moved: Bool
+        var testDescription: String { "after \(String(describing: after)), focused \(focused ?? "none")" }
+    }
+
+    static let focusCases = [
+        FocusCase(after: .none, focused: "beta", moved: false),
+        FocusCase(after: "beta", focused: "beta", moved: false),
+        FocusCase(after: "beta", focused: "gamma", moved: true),
+        FocusCase(after: "beta", focused: nil, moved: false),
+        FocusCase(after: .some(nil), focused: "new document", moved: true)
+    ]
+
+    @Test("Only a window the user focused after the minimize ends the restore", arguments: focusCases)
+    func focusMoved(_ focusCase: FocusCase) {
+        var memory = ClickMinimizeMemory<String>()
+        let token = memory.record("alpha", pid: 42, generation: 3)
+        if case .some(let after) = focusCase.after {
+            memory.recordFocusAfterMinimize(after, pid: 42, token: token)
+        }
+        #expect(memory.focusMoved(of: 42, focused: focusCase.focused) == focusCase.moved)
     }
 }
