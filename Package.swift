@@ -11,6 +11,10 @@ let package = Package(
             dependencies: ["RevzenCore"]
         ),
         .testTarget(
+            name: "RevzenTests",
+            dependencies: ["Revzen"]
+        ),
+        .testTarget(
             name: "RevzenCoreTests",
             dependencies: ["RevzenCore"]
         )

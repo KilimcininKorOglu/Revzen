@@ -15,7 +15,7 @@ This document covers building, testing and releasing Revzen. For installation an
 The project is a Swift package with two targets:
 
 - `RevzenCore` holds the decision logic without AppKit, Accessibility or ScreenCaptureKit code: click policy, hover state, window order, panel placement, settings, version parsing, update schedule, minisign verification and the release verification rules. Its tests are in `Tests/RevzenCoreTests` and use Swift Testing.
-- `Revzen` is the menu bar app. It reads the system state, asks `RevzenCore` for the decision and performs the action.
+- `Revzen` is the menu bar app. It reads the system state, asks `RevzenCore` for the decision and performs the action. The state machine of the updater (`UpdateService`) takes its network, file and install actions as `UpdateService.Dependencies`, so `Tests/RevzenTests` tests its states with fakes through `@testable import Revzen`.
 
 ## Building and testing
 

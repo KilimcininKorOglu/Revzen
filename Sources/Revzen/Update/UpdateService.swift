@@ -30,13 +30,15 @@ final class UpdateService {
 
     @ObservationIgnored var onPresent: (() -> Void)?
     @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored private let dependencies: Dependencies
     @ObservationIgnored private var isAutoCheckEnabled: () -> Bool = { false }
     @ObservationIgnored private var poller: Task<Void, Never>?
     /// A manual check arrived while a scheduled check was running.
     @ObservationIgnored private var joinedManual = false
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, dependencies: Dependencies = .live) {
         self.defaults = defaults
+        self.dependencies = dependencies
         lastCheck = defaults.object(forKey: Self.lastCheckKey) as? Date
     }
 
@@ -44,14 +46,7 @@ final class UpdateService {
     /// change in Settings applies without a restart.
     func start(isAutoCheckEnabled: @escaping () -> Bool) {
         self.isAutoCheckEnabled = isAutoCheckEnabled
-        AppReplacer.reportLastRelaunch()
-        Task.detached {
-            do {
-                try UpdateInstaller.removeStaleDownloads()
-            } catch {
-                DebugLog.error(.update, "could not clean the update downloads: \(error.localizedDescription)")
-            }
-        }
+        dependencies.cleanUp()
         poller = Task { [weak self] in
             while !Task.isCancelled {
                 self?.checkIfDue()
@@ -112,7 +107,7 @@ extension UpdateService {
         lastCheck = now
         defaults.set(now, forKey: Self.lastCheckKey)
         do {
-            let release = try await UpdateChecker.latestRelease()
+            let release = try await dependencies.latestRelease()
             apply(release, manual: takeManual(manual))
         } catch {
             DebugLog.error(.update, "update check failed: \(error.localizedDescription)")
@@ -134,7 +129,7 @@ extension UpdateService {
     }
 
     private func apply(_ release: GitHubRelease, manual: Bool) {
-        guard ReleaseVerification.isNewer(release.version, than: AppInfo.version), let latest = release.version else {
+        guard ReleaseVerification.isNewer(release.version, than: dependencies.currentVersion()), let latest = release.version else {
             DebugLog.event(.update, "latest release \(release.tagName), up to date")
             state = manual ? .upToDate : .idle
             return
@@ -151,7 +146,7 @@ extension UpdateService {
         guard case .available(let release, let version) = state else { return }
         state = .downloading(release, version)
         perform("download") { [self] in
-            let app = try await UpdateInstaller.prepare(release, version: version)
+            let app = try await dependencies.prepare(release, version)
             DebugLog.event(.update, "\(version) verified and staged at \(app.path)")
             state = .ready(app, version)
             onPresent?()
@@ -167,8 +162,8 @@ extension UpdateService {
             do {
                 // The cache folder is writable by every process of the user,
                 // so the staged app is checked again right before the swap.
-                try CodeCheck.verify(app: app, version: version)
-                try await AppReplacer.installAndRelaunch(app)
+                try dependencies.verifyStaged(app, version)
+                try await dependencies.install(app)
             } catch AppReplacer.Failure.cancelled {
                 DebugLog.event(.update, "administrator prompt cancelled, \(version) stays ready to install")
                 state = .ready(app, version)
