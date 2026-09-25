@@ -6,6 +6,8 @@
 
 Revzen brings Windows-style taskbar behavior to the macOS Dock. It runs as a menu bar app.
 
+![Window previews of Visual Studio Code over the Dock](docs/preview.png)
+
 Developer: Kerem Gök ([x.com/KogOglan](https://x.com/KogOglan))
 
 ## Install
