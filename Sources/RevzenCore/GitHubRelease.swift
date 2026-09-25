@@ -17,7 +17,8 @@ public struct GitHubRelease: Decodable, Sendable, Equatable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         tagName = try container.decode(String.self, forKey: .tagName)
-        notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        // Release bodies cut from CHANGELOG.md start and end with blank lines.
+        notes = (try container.decodeIfPresent(String.self, forKey: .notes) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         pageURL = try container.decode(URL.self, forKey: .pageURL)
         assets = try container.decode([ReleaseAsset].self, forKey: .assets)
     }

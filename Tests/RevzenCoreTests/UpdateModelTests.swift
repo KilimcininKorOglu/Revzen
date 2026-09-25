@@ -58,6 +58,13 @@ struct GitHubReleaseTests {
         #expect(assets.signature.name == "Revzen.dmg.minisig")
     }
 
+    @Test("Notes cut from CHANGELOG.md lose their leading and trailing blank lines")
+    func notesAreTrimmed() throws {
+        let body = #""\n### Fixed\n- A fix.\n\n\n""#
+        let release = try decode(json.replacingOccurrences(of: #""Fixes""#, with: body))
+        #expect(release.notes == "### Fixed\n- A fix.")
+    }
+
     @Test("The GitHub digest yields a lowercase SHA-256 for the download check")
     func digestIsNormalized() throws {
         let dmg = try #require(try decode(json).installAssets(dmgName: "Revzen.dmg")?.dmg)

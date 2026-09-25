@@ -40,7 +40,9 @@ jobs:
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           NOTES="${RUNNER_TEMP}/release-notes.md"
-          awk -v v="$VERSION" '$0 ~ "^## \\["v"\\]"{f=1;next} f&&/^## \[/{exit} f{print}' CHANGELOG.md > "$NOTES"
+          # Blank lines between entries stay; those after the heading and
+          # before the next section are dropped.
+          awk -v v="$VERSION" '$0 ~ "^## \\["v"\\]"{f=1;next} f&&/^## \[/{exit} f&&NF{while(b>0){print "";b--} print; s=1; next} f&&s{b++}' CHANGELOG.md > "$NOTES"
           if [ ! -s "$NOTES" ]; then
             echo "::error::CHANGELOG.md has no section for ${VERSION}"
             exit 1
