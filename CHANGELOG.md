@@ -2,6 +2,11 @@
 
 All notable changes to Revzen are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-09-25
+
+### Fixed
+- Moving the pointer over a window preview no longer reaches the app under the preview, so that app no longer reacts to a pointer it cannot see.
+
 ## [1.2.2] - 2026-09-25
 
 ### Added
