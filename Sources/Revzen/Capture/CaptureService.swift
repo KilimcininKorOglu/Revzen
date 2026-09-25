@@ -9,8 +9,12 @@ actor CaptureService {
     /// ScreenCaptureKit does not list are missing from the result. Callers
     /// leave minimized windows out, because their capture is empty. A
     /// cancelled task stops before the next window, for example when the
-    /// preview it belongs to was replaced.
-    func capture(_ ids: [CGWindowID], maxPointSize: CGSize, scale: CGFloat) async -> [CGWindowID: CGImage] {
+    /// preview it belongs to was replaced. `onImage` receives each image as
+    /// soon as it is captured, because one window takes about 50 ms.
+    func capture(
+        _ ids: [CGWindowID], maxPointSize: CGSize, scale: CGFloat,
+        onImage: @Sendable (CGWindowID, CGImage) async -> Void
+    ) async -> [CGWindowID: CGImage] {
         guard CGPreflightScreenCaptureAccess(), !ids.isEmpty else { return [:] }
         let content: SCShareableContent
         do {
@@ -28,6 +32,7 @@ actor CaptureService {
             }
             if let image = await capture(window, maxPointSize: maxPointSize, scale: scale) {
                 images[window.windowID] = image
+                await onImage(window.windowID, image)
             }
         }
         let missing = wanted.subtracting(images.keys).sorted()

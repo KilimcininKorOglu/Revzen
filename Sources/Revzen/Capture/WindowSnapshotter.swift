@@ -68,12 +68,18 @@ final class WindowSnapshotter {
         return images
     }
 
-    /// Captures the windows and stores the images.
-    func captureLive(_ windows: [PreviewWindow], scale: CGFloat) async -> [CGWindowID: CGImage] {
+    /// Captures the windows and stores the images. `onImage` receives each
+    /// visible window's image as soon as it is captured.
+    func captureLive(
+        _ windows: [PreviewWindow], scale: CGFloat,
+        onImage: @escaping @MainActor @Sendable (CGWindowID, CGImage) -> Void = { _, _ in }
+    ) async -> [CGWindowID: CGImage] {
         let size = PreviewLayout.maxImageSize
         let visible = windows.filter { !$0.window.isMinimized }.compactMap(\.windowID)
         let minimized = windows.filter(\.window.isMinimized).compactMap(\.windowID)
-        var images = await capture.capture(visible, maxPointSize: size, scale: scale)
+        var images = await capture.capture(visible, maxPointSize: size, scale: scale) { id, image in
+            await onImage(id, image)
+        }
         if !Task.isCancelled {
             images.merge(await capture.captureMinimized(minimized, maxPointSize: size, scale: scale)) { live, _ in live }
         }

@@ -146,7 +146,12 @@ final class PreviewController {
     }
 
     private func loadImages(for windows: [PreviewWindow], scale: CGFloat) async {
-        let images = await snapshots.captureLive(windows, scale: scale)
+        // Each image shows as it arrives: an app with many windows takes
+        // about 50 ms per window.
+        let images = await snapshots.captureLive(windows, scale: scale) { [weak self] id, image in
+            guard let self, !Task.isCancelled, model.windows == windows else { return }
+            model.images[id] = image
+        }
         guard !Task.isCancelled, model.windows == windows else {
             DebugLog.event(.preview, "live images for \(images.count) windows discarded: the preview changed")
             return
