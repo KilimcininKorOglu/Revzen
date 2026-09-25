@@ -33,7 +33,7 @@ final class DockServices {
         let clicks = DockClickHandler(
             dock: dock,
             directory: directory,
-            beforeMinimize: { pid in await snapshots.snapshot(pid: pid) },
+            beforeMinimize: { window, pid in await snapshots.snapshot(window, pid: pid) },
             onMenuClick: { Task { @MainActor in preview.dockMenuOpened() } }
         )
         let scrolls = DockScrollHandler(dock: dock, directory: directory)

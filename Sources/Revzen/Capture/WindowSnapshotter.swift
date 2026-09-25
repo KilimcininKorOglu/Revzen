@@ -83,18 +83,23 @@ final class WindowSnapshotter {
         return images
     }
 
-    /// Captures every visible window of the app. Excluded apps, apps without
-    /// a Dock icon and Revzen itself are skipped.
-    func snapshot(pid: pid_t) async {
-        guard pid != ProcessInfo.processInfo.processIdentifier, !isSkipped(pid) else { return }
-        let windows = await Task.detached { WindowService.previewWindows(of: pid) }.value
-        _ = await captureLive(windows, scale: NSScreen.screens.first?.backingScaleFactor ?? 1)
+    /// Captures one visible window of the app. Excluded apps, apps without a
+    /// Dock icon and Revzen itself are skipped.
+    func snapshot(_ element: AXElement, pid: pid_t) async {
+        await snapshot(pid: pid) {
+            WindowService.previewWindow(AppWindow(element: element, pid: pid, isMinimized: false))
+        }
     }
 
     /// Captures the focused window of the app, with the same skips.
     func snapshotFocused(pid: pid_t) async {
+        await snapshot(pid: pid) { WindowService.focusedPreviewWindow(of: pid) }
+    }
+
+    /// `window` reads AX, so it runs off the main actor.
+    private func snapshot(pid: pid_t, window: @escaping @Sendable () -> PreviewWindow?) async {
         guard pid != ProcessInfo.processInfo.processIdentifier, !isSkipped(pid),
-            let window = await Task.detached(operation: { WindowService.focusedPreviewWindow(of: pid) }).value
+            let window = await Task.detached(operation: window).value
         else { return }
         _ = await captureLive([window], scale: NSScreen.screens.first?.backingScaleFactor ?? 1)
     }

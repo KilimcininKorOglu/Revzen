@@ -22,15 +22,15 @@ final class DockClickHandler: Sendable {
     /// restores it instead of minimizing the window macOS focused next.
     private let clickMinimized = Mutex(ClickMinimizeMemory<AXElement>())
 
-    /// Runs before the windows are minimized, while they are still capturable.
-    private let beforeMinimize: @Sendable (pid_t) async -> Void
+    /// Runs before the window is minimized, while it is still capturable.
+    private let beforeMinimize: @Sendable (AXElement, pid_t) async -> Void
     /// Runs when a click opens the Dock menu of an app icon.
     private let onMenuClick: @Sendable () -> Void
 
     init(
         dock: DockAX,
         directory: AppDirectory,
-        beforeMinimize: @escaping @Sendable (pid_t) async -> Void,
+        beforeMinimize: @escaping @Sendable (AXElement, pid_t) async -> Void,
         onMenuClick: @escaping @Sendable () -> Void
     ) {
         self.dock = dock
@@ -127,7 +127,7 @@ extension DockClickHandler {
     private func minimize(_ window: AXElement, pid: pid_t, generation: Int) -> Bool {
         let token = clickMinimized.withLock { $0.record(window, pid: pid, generation: generation) }
         Task { [self] in
-            await beforeMinimize(pid)
+            await beforeMinimize(window, pid)
             actions.async { [self] in
                 guard clickMinimized.withLock({ $0.isLatest(token, for: pid) }) else {
                     DebugLog.event(.click, "pid \(pid): minimize dropped, a later click restored or replaced the window")
