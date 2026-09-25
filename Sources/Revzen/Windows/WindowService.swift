@@ -36,7 +36,13 @@ enum WindowService {
         return WindowOrder.alphabetical(found, title: \.title, windowID: \.windowID)
     }
 
-    private static func previewWindow(_ window: AppWindow) -> PreviewWindow {
+    /// The focused window of the app as the preview shows it. Nil when
+    /// `focusedWindow(of:)` finds none.
+    static func focusedPreviewWindow(of pid: pid_t) -> PreviewWindow? {
+        focusedWindow(of: pid).map { previewWindow(AppWindow(element: $0, pid: pid, isMinimized: false)) }
+    }
+
+    static func previewWindow(_ window: AppWindow) -> PreviewWindow {
         PreviewWindow(
             window: window,
             windowID: window.element.windowID(),

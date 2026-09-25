@@ -6,9 +6,13 @@ import RevzenCore
 /// shows the image taken before the minimize. Images are taken:
 /// - whenever a preview captures live windows,
 /// - right before Revzen minimizes an app's windows,
-/// - when an app stops being the active app,
-/// - every `refreshInterval` for the active app, which covers a minimize
-///   through the window's own button.
+/// - of the focused window when an app stops being the active app,
+/// - of the focused window of the active app every `refreshInterval`,
+///   which covers a minimize through the window's own button.
+///
+/// The last two take only the focused window, because the title bar button
+/// minimizes that window, and capturing every window of an app with many
+/// windows costs about 50 ms of capture work per window.
 @MainActor
 final class WindowSnapshotter {
     static let capacity = 48
@@ -31,7 +35,7 @@ final class WindowSnapshotter {
             guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
             let pid = app.processIdentifier
             DebugLog.event(.capture, "snapshot on deactivation of \(app.logName)")
-            Task { @MainActor in await self?.snapshot(pid: pid) }
+            Task { @MainActor in await self?.snapshotFocused(pid: pid) }
         }
         refreshTask = Task { [weak self] in
             while !Task.isCancelled {
@@ -41,7 +45,7 @@ final class WindowSnapshotter {
                     return  // cancelled by stop()
                 }
                 guard let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier else { continue }
-                await self?.snapshot(pid: pid)
+                await self?.snapshotFocused(pid: pid)
             }
         }
     }
@@ -85,6 +89,14 @@ final class WindowSnapshotter {
         guard pid != ProcessInfo.processInfo.processIdentifier, !isSkipped(pid) else { return }
         let windows = await Task.detached { WindowService.previewWindows(of: pid) }.value
         _ = await captureLive(windows, scale: NSScreen.screens.first?.backingScaleFactor ?? 1)
+    }
+
+    /// Captures the focused window of the app, with the same skips.
+    func snapshotFocused(pid: pid_t) async {
+        guard pid != ProcessInfo.processInfo.processIdentifier, !isSkipped(pid),
+            let window = await Task.detached(operation: { WindowService.focusedPreviewWindow(of: pid) }).value
+        else { return }
+        _ = await captureLive([window], scale: NSScreen.screens.first?.backingScaleFactor ?? 1)
     }
 
     func forget(_ id: CGWindowID) {
