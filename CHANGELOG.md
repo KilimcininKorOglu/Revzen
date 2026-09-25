@@ -2,6 +2,14 @@
 
 All notable changes to Revzen are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.3.5] - 2026-09-26
+
+### Changed
+- Pointer moves no longer pass through Revzen while no preview is pending or shown, so moving the mouse costs no CPU in Revzen.
+- Between previews, Revzen captures only the focused window instead of every window of the app, which cuts its background capture work.
+- A Dock click minimizes the window sooner, because Revzen now captures only that window before the minimize.
+- The window preview shows each live image as soon as it is captured, instead of after every window of the app.
+
 ## [1.3.1] - 2026-09-25
 
 ### Changed
