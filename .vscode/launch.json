@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Revzen}",
+            "name": "Debug Revzen",
+            "target": "Revzen",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Revzen"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Revzen}",
+            "name": "Release Revzen",
+            "target": "Revzen",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Revzen"
+        }
+    ]
+}
