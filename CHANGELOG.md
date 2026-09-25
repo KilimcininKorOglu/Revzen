@@ -2,6 +2,14 @@
 
 All notable changes to Revzen are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] - 2026-09-25
+
+### Changed
+- The README shows a screenshot of the window previews.
+
+### Fixed
+- Moving the pointer from an app's icon to the icon of an app that is not running, or is excluded, now closes the preview of the first app.
+
 ## [1.3.0] - 2026-09-25
 
 ### Fixed
