@@ -11,6 +11,8 @@ final class DockServices {
     private let preview: PreviewController
     private var workspaceObserver: WorkspaceObserver?
     private var eventTap: EventTap?
+    /// Pointer moves, enabled only while the preview tracks the pointer.
+    private var moveTap: EventTap?
 
     init(excludedBundleIDs: Set<String>, settings: @escaping @MainActor () -> RevzenSettings) {
         directory.setExcluded(excludedBundleIDs)
@@ -35,21 +37,20 @@ final class DockServices {
             onMenuClick: { Task { @MainActor in preview.dockMenuOpened() } }
         )
         let scrolls = DockScrollHandler(dock: dock, directory: directory)
-        let pointer = preview.pointer
-        let events: [CGEventType] = [.leftMouseDown, .leftMouseUp, .rightMouseDown, .mouseMoved, .scrollWheel]
+        let events: [CGEventType] = [.leftMouseDown, .leftMouseUp, .rightMouseDown, .scrollWheel]
         let tap = EventTap(events: events) { type, event in
-            switch type {
-            case .mouseMoved:
-                pointer.moved(to: event.location)
-                return pointer.keepsOverPanel(event)
-            case .scrollWheel:
-                return scrolls.handle(event)
-            default:
-                return clicks.handle(type, event)
-            }
+            type == .scrollWheel ? scrolls.handle(event) : clicks.handle(type, event)
         }
         try tap.start()
         eventTap = tap
+        let pointer = preview.pointer
+        let moves = EventTap(events: [.mouseMoved], enabled: false) { _, event in
+            pointer.moved(to: event.location)
+            return pointer.keepsOverPanel(event)
+        }
+        try moves.start()
+        moveTap = moves
+        pointer.attach(moves)
         DebugLog.event(.app, "Dock services started")
     }
 
@@ -57,6 +58,9 @@ final class DockServices {
         DebugLog.event(.app, "Dock services stopped")
         eventTap?.stop()
         eventTap = nil
+        preview.pointer.attach(nil)
+        moveTap?.stop()
+        moveTap = nil
         preview.stop()
         snapshots.stop()
         workspaceObserver?.invalidate()

@@ -22,9 +22,16 @@ final class EventTap: Sendable {
         private let lock = NSLock()
         private var storedPort: CFMachPort?
         private var storedRunLoop: CFRunLoop?
+        private var storedEnabled: Bool
 
-        init(handler: @escaping Handler) {
+        init(handler: @escaping Handler, enabled: Bool) {
             self.handler = handler
+            storedEnabled = enabled
+        }
+
+        var enabled: Bool {
+            get { lock.withLock { storedEnabled } }
+            set { lock.withLock { storedEnabled = newValue } }
         }
 
         var port: CFMachPort? {
@@ -41,9 +48,20 @@ final class EventTap: Sendable {
     private let context: Context
     private let mask: CGEventMask
 
-    init(events: [CGEventType], handler: @escaping Handler) {
-        context = Context(handler: handler)
+    /// A tap created with `enabled: false` receives nothing until
+    /// `setEnabled(true)`.
+    init(events: [CGEventType], enabled: Bool = true, handler: @escaping Handler) {
+        context = Context(handler: handler, enabled: enabled)
         mask = events.reduce(CGEventMask(0)) { $0 | (CGEventMask(1) << $1.rawValue) }
+    }
+
+    /// A disabled tap costs nothing: the window server does not send it the
+    /// events, so they reach the apps without a round trip through Revzen.
+    func setEnabled(_ enabled: Bool) {
+        context.enabled = enabled
+        if let port = context.port {
+            CGEvent.tapEnable(tap: port, enable: enabled)
+        }
     }
 
     func start() throws {
@@ -61,13 +79,14 @@ final class EventTap: Sendable {
             throw Failure.createFailed
         }
         context.port = port
+        // A new tap starts enabled. Applied here, before any setEnabled call.
+        CGEvent.tapEnable(tap: port, enable: context.enabled)
         let thread = Thread { [context] in
             guard let port = context.port else { return }
             let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, port, 0)
             let current = CFRunLoopGetCurrent()
             CFRunLoopAddSource(current, source, .commonModes)
             context.runLoop = current
-            CGEvent.tapEnable(tap: port, enable: true)
             CFRunLoopRun()
         }
         thread.name = "com.kilimcininkoroglu.revzen.eventtap"
@@ -92,7 +111,7 @@ final class EventTap: Sendable {
         let context = Unmanaged<Context>.fromOpaque(refcon).takeUnretainedValue()
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             DebugLog.error(.app, "event tap disabled by the system (\(type.rawValue)), enabling it again")
-            if let port = context.port {
+            if let port = context.port, context.enabled {
                 CGEvent.tapEnable(tap: port, enable: true)
             }
             return Unmanaged.passUnretained(event)

@@ -11,15 +11,25 @@ final class PointerTracker: Sendable {
     private let latest = Mutex<CGPoint>(.zero)
     /// The shown preview panel in top-left global coordinates.
     private let panelFrame = Mutex<CGRect?>(nil)
+    /// The tap that delivers the moves. It runs only while tracking is on,
+    /// because an active tap puts every pointer move of the system through
+    /// Revzen.
+    private let moveTap = Mutex<EventTap?>(nil)
     private let onMove: @MainActor @Sendable (CGPoint) -> Void
 
     init(onMove: @escaping @MainActor @Sendable (CGPoint) -> Void) {
         self.onMove = onMove
     }
 
+    func attach(_ tap: EventTap?) {
+        moveTap.withLock { $0 = tap }
+        tap?.setEnabled(isActive.load(ordering: .relaxed))
+    }
+
     func setActive(_ active: Bool) {
         if isActive.exchange(active, ordering: .relaxed) != active {
             DebugLog.event(.pointer, "tracking \(active ? "on" : "off")")
+            moveTap.withLock { $0 }?.setEnabled(active)
         }
     }
 
