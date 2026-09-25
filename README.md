@@ -42,7 +42,7 @@ Launch at login is on by default. The first launch registers Revzen as a login i
 
 Revzen checks GitHub for a new release once a day. Choose "Check for Updates…" in the menu bar menu to check at once. You can turn the daily check off in Settings.
 
-When a new release is available, a window shows its release notes. Revzen downloads the release and verifies it before it replaces the running app:
+When a new release is available, a window shows its release notes. Revzen downloads the release and verifies it before it replaces the running app. During the download, a progress bar shows the size received and the total size:
 
 - The download matches the checksum that GitHub recorded for the release.
 - The download carries a valid signature from the Revzen release key.

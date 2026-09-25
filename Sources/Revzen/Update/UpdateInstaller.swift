@@ -1,6 +1,7 @@
 import Foundation
 import RevzenCore
 import Security
+import Synchronization
 
 /// Why an update was not installed.
 enum UpdateFailure: Error, LocalizedError {
@@ -39,8 +40,14 @@ enum UpdateInstaller {
         .appending(path: "Revzen/updates", directoryHint: .isDirectory)
     static let cacheLifetime: TimeInterval = 7 * 24 * 60 * 60
 
-    /// Returns the verified app inside the cache.
-    static func prepare(_ release: GitHubRelease, version: SemanticVersion) async throws -> URL {
+    /// Receives the download progress on the main actor.
+    typealias ProgressReport = @MainActor @Sendable (UpdateProgress) -> Void
+
+    /// Returns the verified app inside the cache. `report` receives the
+    /// bytes of the DMG download, then `verifying` for the checks after it.
+    static func prepare(
+        _ release: GitHubRelease, version: SemanticVersion, report: @escaping ProgressReport
+    ) async throws -> URL {
         guard let assets = release.installAssets(dmgName: AppInfo.dmgName) else { throw UpdateFailure.missingAssets }
         guard let digest = assets.dmg.sha256 else { throw UpdateFailure.missingDigest }
         for url in [assets.dmg.downloadURL, assets.signature.downloadURL]
@@ -54,8 +61,9 @@ enum UpdateInstaller {
         }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
 
-        let dmg = try await download(assets.dmg.downloadURL, to: folder.appending(path: AppInfo.dmgName))
+        let dmg = try await download(assets.dmg.downloadURL, to: folder.appending(path: AppInfo.dmgName), report: report)
         let signature = try await download(assets.signature.downloadURL, to: folder.appending(path: assets.signature.name))
+        await report(.verifying)
         let data = try Data(contentsOf: dmg)
         try verifyDigest(of: data, expected: digest)
         try verifySignature(of: data, signatureFile: signature, version: version)
@@ -65,9 +73,9 @@ enum UpdateInstaller {
         return app
     }
 
-    private static func download(_ url: URL, to destination: URL) async throws -> URL {
+    private static func download(_ url: URL, to destination: URL, report: ProgressReport? = nil) async throws -> URL {
         let (temporary, response) = try await URLSession.shared.download(
-            for: UpdateChecker.request(url, timeout: 60), delegate: AssetRedirectGuard())
+            for: UpdateChecker.request(url, timeout: 60), delegate: AssetDownloadDelegate(report: report))
         try UpdateChecker.requireSuccess(response)
         try FileManager.default.moveItem(at: temporary, to: destination)
         return destination
@@ -114,9 +122,43 @@ extension UpdateInstaller {
     }
 }
 
-/// Follows a redirect only to the hosts GitHub serves release assets from.
-/// A refused redirect ends the download with the redirect status.
-private final class AssetRedirectGuard: NSObject, URLSessionTaskDelegate {
+/// Follows a redirect only to the hosts GitHub serves release assets from,
+/// and reports the bytes received. A refused redirect ends the download
+/// with the redirect status.
+///
+/// The async `download(for:delegate:)` call does not pass `didWriteData` to
+/// a task delegate, so the bytes come from observing the task.
+private final class AssetDownloadDelegate: NSObject, URLSessionTaskDelegate, Sendable {
+    private let report: UpdateInstaller.ProgressReport?
+    private let lastReported = Mutex<UpdateProgress?>(nil)
+    private let observation = Mutex<NSKeyValueObservation?>(nil)
+
+    init(report: UpdateInstaller.ProgressReport?) {
+        self.report = report
+    }
+
+    func urlSession(_ session: URLSession, didCreateTask task: URLSessionTask) {
+        guard report != nil else { return }
+        let observer = task.observe(\.countOfBytesReceived) { [weak self] task, _ in
+            self?.received(task.countOfBytesReceived, of: task.countOfBytesExpectedToReceive)
+        }
+        observation.withLock { $0 = observer }
+    }
+
+    private func received(_ bytes: Int64, of size: Int64) {
+        // Until the first bytes arrive, the window says the download starts.
+        guard let report, bytes > 0 else { return }
+        let progress = UpdateProgress.downloading(received: bytes, expected: size > 0 ? size : nil)
+        let isNew = lastReported.withLock { last in
+            guard UpdateProgress.isNewStep(from: last, to: progress) else { return false }
+            last = progress
+            return true
+        }
+        if isNew {
+            Task { @MainActor in report(progress) }
+        }
+    }
+
     func urlSession(
         _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
         newRequest request: URLRequest

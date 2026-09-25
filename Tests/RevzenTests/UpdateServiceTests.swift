@@ -29,6 +29,12 @@ private final class ErrorBox {
     var error: (any Error)?
 }
 
+/// The progress callback the service passed to the fake download.
+@MainActor
+private final class ReportBox {
+    var report: UpdateInstaller.ProgressReport?
+}
+
 private struct StepFailure: Error, LocalizedError {
     var errorDescription: String? { "step failed" }
 }
@@ -40,6 +46,7 @@ private final class Harness {
     let prepare = Gate<URL>()
     let install = Gate<Void>()
     let verifyError = ErrorBox()
+    let reports = ReportBox()
     private(set) var presented = 0
     private let temporary = TemporaryDefaults()
     let service: UpdateService
@@ -52,7 +59,10 @@ private final class Harness {
         let dependencies = UpdateService.Dependencies(
             latestRelease: { [release] in try await release.wait() },
             currentVersion: { Self.current },
-            prepare: { [prepare] _, _ in try await prepare.wait() },
+            prepare: { [prepare, reports] _, _, report in
+                reports.report = report
+                return try await prepare.wait()
+            },
             verifyStaged: { [verifyError] _, _ in if let error = verifyError.error { throw error } },
             install: { [install] _ in try await install.wait() },
             cleanUp: {}
@@ -165,6 +175,26 @@ struct UpdateServiceTests {
         await harness.answer(harness.prepare, .failure(StepFailure()))
         await harness.until { harness.service.state == .failed("step failed") }
         #expect(harness.presented == shown + 1)
+    }
+
+    @Test("Download reports show in the window and end with the download")
+    func downloadProgress() async throws {
+        let harness = Harness()
+        defer { harness.finish() }
+        try await harness.reachAvailable()
+        harness.service.download()
+        await harness.until { harness.prepare.isWaiting }
+        #expect(harness.service.progress == nil)
+        let report = try #require(harness.reports.report)
+        report(.downloading(received: 512, expected: 1024))
+        #expect(harness.service.progress?.fraction == 0.5)
+        report(.verifying)
+        #expect(harness.service.progress == .verifying)
+        harness.prepare.finish(.success(Harness.staged))
+        await harness.until { harness.service.state == .ready(Harness.staged, Harness.newer) }
+        #expect(harness.service.progress == nil)
+        report(.downloading(received: 1024, expected: 1024))
+        #expect(harness.service.progress == nil)
     }
 
     @Test("Closing the window on an offered release ends it, so later checks run")

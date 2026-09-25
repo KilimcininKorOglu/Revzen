@@ -7,7 +7,7 @@ extension UpdateService {
     struct Dependencies {
         var latestRelease: @MainActor () async throws -> GitHubRelease
         var currentVersion: @MainActor () -> SemanticVersion?
-        var prepare: @MainActor (GitHubRelease, SemanticVersion) async throws -> URL
+        var prepare: @MainActor (GitHubRelease, SemanticVersion, @escaping UpdateInstaller.ProgressReport) async throws -> URL
         var verifyStaged: @MainActor (URL, SemanticVersion) throws -> Void
         var install: @MainActor (URL) async throws -> Void
         /// Launch housekeeping: the relaunch report and the download cleanup.
@@ -16,7 +16,7 @@ extension UpdateService {
         static let live = Dependencies(
             latestRelease: { try await UpdateChecker.latestRelease() },
             currentVersion: { AppInfo.version },
-            prepare: { try await UpdateInstaller.prepare($0, version: $1) },
+            prepare: { try await UpdateInstaller.prepare($0, version: $1, report: $2) },
             verifyStaged: { try CodeCheck.verify(app: $0, version: $1) },
             install: { try await AppReplacer.installAndRelaunch($0) },
             cleanUp: {

@@ -27,6 +27,8 @@ final class UpdateService {
 
     private(set) var state = State.idle
     private(set) var lastCheck: Date?
+    /// The progress of the running download, nil outside `downloading`.
+    private(set) var progress: UpdateProgress?
 
     @ObservationIgnored var onPresent: (() -> Void)?
     @ObservationIgnored private let defaults: UserDefaults
@@ -145,8 +147,14 @@ extension UpdateService {
     func download() {
         guard case .available(let release, let version) = state else { return }
         state = .downloading(release, version)
+        progress = nil
         perform("download") { [self] in
-            let app = try await dependencies.prepare(release, version)
+            // A report that arrives after the step ended is dropped.
+            let app = try await dependencies.prepare(release, version) { [weak self] step in
+                guard let self, case .downloading = state else { return }
+                progress = step
+            }
+            progress = nil
             DebugLog.event(.update, "\(version) verified and staged at \(app.path)")
             state = .ready(app, version)
             onPresent?()
@@ -179,6 +187,7 @@ extension UpdateService {
                 try await work()
             } catch {
                 DebugLog.error(.update, "update \(step) failed: \(error.localizedDescription)")
+                progress = nil
                 state = .failed(error.localizedDescription)
                 onPresent?()
             }

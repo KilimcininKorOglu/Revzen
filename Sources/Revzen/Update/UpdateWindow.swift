@@ -71,7 +71,7 @@ struct UpdateView: View {
             ReleaseNotes(text: release.notes)
             buttons(secondary: ("Later", dismiss), primary: ("Download and Install", service.download))
         case .downloading(_, let version):
-            ProgressRow(text: "Downloading and verifying Revzen \(version)…")
+            DownloadProgressRow(version: version, progress: service.progress)
         case .ready(_, let version):
             Message(title: "Revzen \(version) is ready", detail: "Revzen quits, installs the update and opens again.")
             buttons(secondary: ("Later", close), primary: ("Install and Relaunch", service.installAndRelaunch))
@@ -119,6 +119,41 @@ private struct ProgressRow: View {
             ProgressView().controlSize(.small)
             Text(text)
         }
+    }
+}
+
+/// A bar that fills with the DMG download, with the bytes received below
+/// it. The checks after the download cannot be measured, so the bar then
+/// runs without a value.
+private struct DownloadProgressRow: View {
+    let version: SemanticVersion
+    let progress: UpdateProgress?
+
+    var body: some View {
+        Text("Downloading Revzen \(version.description)").font(.headline)
+        if let fraction = progress?.fraction {
+            ProgressView(value: fraction)
+        } else {
+            ProgressView().progressViewStyle(.linear)
+        }
+        Text(detail).foregroundStyle(.secondary).monospacedDigit()
+    }
+
+    private var detail: String {
+        switch progress {
+        case .downloading(let received, let expected?)?:
+            "\(Self.size(received)) of \(Self.size(expected))"
+        case .downloading(let received, nil)?:
+            Self.size(received)
+        case .verifying?:
+            "Verifying the download…"
+        case nil:
+            "Starting the download…"
+        }
+    }
+
+    private static func size(_ bytes: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
     }
 }
 
