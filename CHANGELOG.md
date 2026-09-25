@@ -2,6 +2,11 @@
 
 All notable changes to Revzen are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.2.2] - 2026-09-25
+
+### Added
+- The update window shows a progress bar with the size received and the total size while it downloads a release, then shows that it verifies the download.
+
 ## [1.2.1] - 2026-09-25
 
 ### Fixed
