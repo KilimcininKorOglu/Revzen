@@ -41,7 +41,7 @@ final class DockServices {
             switch type {
             case .mouseMoved:
                 pointer.moved(to: event.location)
-                return false
+                return pointer.keepsOverPanel(event)
             case .scrollWheel:
                 return scrolls.handle(event)
             default:

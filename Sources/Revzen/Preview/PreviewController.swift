@@ -154,6 +154,7 @@ final class PreviewController {
     private func place(_ size: CGSize, anchor: DockItem, edge: DockEdge, screen: NSScreen) {
         let frame = PanelPlacement.frame(panelSize: size, anchor: anchor.frame, edge: edge, screen: screen.cgFrame)
         panel.setFrame(PanelPlacement.flipped(frame, primaryScreenHeight: NSScreen.primaryHeight), display: true)
+        pointer.setPanelFrame(frame)
     }
 
     private func select(_ window: PreviewWindow) {
@@ -231,6 +232,7 @@ final class PreviewController {
         pending = nil
         anchor = nil
         updateTracking()
+        pointer.setPanelFrame(nil)
         panel.orderOut(nil)
     }
 

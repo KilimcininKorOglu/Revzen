@@ -9,6 +9,8 @@ final class PointerTracker: Sendable {
     private let isActive = Atomic<Bool>(false)
     private let isDeliveryQueued = Atomic<Bool>(false)
     private let latest = Mutex<CGPoint>(.zero)
+    /// The shown preview panel in top-left global coordinates.
+    private let panelFrame = Mutex<CGRect?>(nil)
     private let onMove: @MainActor @Sendable (CGPoint) -> Void
 
     init(onMove: @escaping @MainActor @Sendable (CGPoint) -> Void) {
@@ -19,6 +21,20 @@ final class PointerTracker: Sendable {
         if isActive.exchange(active, ordering: .relaxed) != active {
             DebugLog.event(.pointer, "tracking \(active ? "on" : "off")")
         }
+    }
+
+    func setPanelFrame(_ frame: CGRect?) {
+        panelFrame.withLock { $0 = frame }
+    }
+
+    /// Called on the event tap thread for a pointer move. Returns true when
+    /// the move is over the preview panel: the panel never activates, so
+    /// the window server sends the move to the active app under it, which
+    /// reacts to the pointer it cannot see. The move goes to Revzen only.
+    func keepsOverPanel(_ event: CGEvent) -> Bool {
+        guard panelFrame.withLock({ $0?.contains(event.location) }) == true else { return false }
+        event.postToPid(getpid())
+        return true
     }
 
     /// Called on the event tap thread for every pointer move. Moves that
