@@ -2,6 +2,11 @@
 
 All notable changes to Revzen are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.2.1] - 2026-09-25
+
+### Fixed
+- The release notes in the update window no longer start with an empty line and end with two.
+
 ## [1.2.0] - 2026-09-25
 
 ### Changed
