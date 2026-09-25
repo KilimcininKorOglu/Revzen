@@ -43,6 +43,12 @@ public struct HoverState<Item: Equatable & Sendable>: Sendable {
         hovered = nil
     }
 
+    /// The hovered icon gets no preview, because its app is not running or
+    /// is excluded. Pointer moves over it no longer ask for one.
+    public mutating func hoveredHasNoPreview() {
+        hovered = nil
+    }
+
     /// The pointer came back to the hovered icon without a Dock notification.
     /// Returns the icon to preview, if any.
     public func pointerReturned() -> Item? {

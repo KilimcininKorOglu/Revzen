@@ -46,6 +46,15 @@ struct HoverStateTests {
     func returnInsideDockPreviews() {
         #expect(hoveringTextEdit().pointerReturned() == "TextEdit")
     }
+
+    @Test("An icon without a preview stops asking for one, and the next icon previews")
+    func iconWithoutPreview() {
+        var state = HoverState<String>()
+        _ = state.dockNotified("iTerm", pointerInside: true)
+        state.hoveredHasNoPreview()
+        #expect(state.pointerReturned() == nil)
+        #expect(state.dockNotified("TextEdit", pointerInside: true) == "TextEdit")
+    }
 }
 
 @Suite("HoverState and the Dock menu")

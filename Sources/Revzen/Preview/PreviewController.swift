@@ -81,6 +81,10 @@ final class PreviewController {
     private func schedule(_ item: DockItem) {
         guard let app = dock.runningApp(for: item, in: directory), !directory.isExcluded(app) else {
             DebugLog.event(.preview, "\(item.logName): not running or excluded, no preview")
+            // The preview of the icon the pointer came from would stay open
+            // over this one.
+            hoverState.hoveredHasNoPreview()
+            hide(reason: "\(item.logName) has no preview")
             return
         }
         guard item != anchor || !panel.isVisible else {
