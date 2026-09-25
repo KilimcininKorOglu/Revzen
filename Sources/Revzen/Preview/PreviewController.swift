@@ -79,7 +79,7 @@ final class PreviewController {
     }
 
     private func schedule(_ item: DockItem) {
-        guard let app = directory.app(forBundleURL: item.appURL), !directory.isExcluded(app) else {
+        guard let app = dock.runningApp(for: item, in: directory), !directory.isExcluded(app) else {
             DebugLog.event(.preview, "\(item.logName): not running or excluded, no preview")
             return
         }
@@ -165,7 +165,7 @@ final class PreviewController {
     /// read back instead of edited, because the app can refuse the close,
     /// for example with a save dialog.
     private func close(_ window: PreviewWindow) {
-        guard let anchor, let app = directory.app(forBundleURL: anchor.appURL) else {
+        guard let anchor, let app = dock.runningApp(for: anchor, in: directory) else {
             DebugLog.event(.preview, "close of \(window.logName) ignored: the app is gone")
             return
         }

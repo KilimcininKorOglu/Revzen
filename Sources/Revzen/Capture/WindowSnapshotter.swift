@@ -92,9 +92,7 @@ final class WindowSnapshotter {
     }
 
     private func isSkipped(_ pid: pid_t) -> Bool {
-        guard let url = NSRunningApplication(processIdentifier: pid)?.bundleURL,
-            let app = directory.app(forBundleURL: url)
-        else { return true }
+        guard let app = directory.app(pid: pid) else { return true }
         return directory.isExcluded(app)
     }
 }

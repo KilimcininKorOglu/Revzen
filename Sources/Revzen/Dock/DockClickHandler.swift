@@ -73,7 +73,7 @@ extension DockClickHandler {
             DebugLog.event(.click, "\(item.logName): modified click, the Dock handles it")
             return false
         }
-        guard let app = directory.app(forBundleURL: item.appURL) else {
+        guard let app = dock.runningApp(for: item, in: directory) else {
             DebugLog.event(.click, "\(item.logName): not running, the Dock launches it")
             return false
         }

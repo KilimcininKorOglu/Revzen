@@ -29,7 +29,7 @@ final class DockScrollHandler: Sendable {
     /// running, not excluded app belongs to Revzen.
     func handle(_ event: CGEvent) -> Bool {
         guard let item = dock.appItem(at: event.location),
-            let app = directory.app(forBundleURL: item.appURL),
+            let app = dock.runningApp(for: item, in: directory),
             !directory.isExcluded(app)
         else { return false }
         // Momentum after the fingers leave the trackpad would keep cycling.

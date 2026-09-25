@@ -76,6 +76,23 @@ final class DockAX: Sendable {
             .first { $0.string(kAXRoleAttribute) == kAXListRole }
     }
 
+    /// The running copy that an icon belongs to. An app launched more than
+    /// once has one icon per copy with the same URL, so the icon's position
+    /// among those icons picks the copy. The Dock list is read only then.
+    func runningApp(for item: DockItem, in directory: AppDirectory) -> RunningApp? {
+        let copies = directory.apps(forBundleURL: item.appURL)
+        guard copies.count > 1 else { return copies.first }
+        let icons = iconList()?.elements(kAXChildrenAttribute) ?? []
+        let urls = icons.map { $0.url(kAXURLAttribute)?.standardizedFileURL }
+        let index = icons.firstIndex(of: item.element).flatMap { DockInstances.index(of: $0, in: urls) }
+        guard let copy = DockInstances.copy(copies, index: index) else {
+            DebugLog.error(
+                .app, "no running copy for icon \(index.map(String.init) ?? "unknown") of \(item.logName), \(copies.count) copies")
+            return nil
+        }
+        return copy
+    }
+
     static func appItem(from element: AXElement) -> DockItem? {
         guard element.string(kAXSubroleAttribute) == appItemSubrole,
             let url = element.url(kAXURLAttribute),

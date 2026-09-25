@@ -1,4 +1,5 @@
 import AppKit
+import RevzenCore
 import Synchronization
 
 /// A running app as the event tap thread sees it.
@@ -13,7 +14,9 @@ struct RunningApp: Sendable, Equatable {
 /// notifications, so the event tap never touches AppKit.
 final class AppDirectory: Sendable {
     private struct State {
-        var appsByURL: [URL: RunningApp] = [:]
+        /// Every running copy of each app, in launch order, the order in
+        /// which the Dock lists their icons.
+        var appsByURL: [URL: [RunningApp]] = [:]
         var frontmostPID: pid_t?
         var excludedBundleIDs: Set<String> = []
         /// Counts app activations, so a click can tell whether the app
@@ -23,9 +26,15 @@ final class AppDirectory: Sendable {
 
     private let state = Mutex(State())
 
-    func app(forBundleURL url: URL) -> RunningApp? {
+    /// The running copies of the app at `url`, in launch order.
+    func apps(forBundleURL url: URL) -> [RunningApp] {
         let key = url.standardizedFileURL
-        return state.withLock { $0.appsByURL[key] }
+        return state.withLock { $0.appsByURL[key] ?? [] }
+    }
+
+    /// The copy of the app with `pid`, when it has a Dock icon.
+    func app(pid: pid_t) -> RunningApp? {
+        state.withLock { state in state.appsByURL.values.lazy.flatMap { $0 }.first { $0.pid == pid } }
     }
 
     func isFrontmost(_ pid: pid_t) -> Bool {
@@ -50,7 +59,7 @@ final class AppDirectory: Sendable {
         let apps = workspace.runningApplications.compactMap(Self.record)
         let frontmost = workspace.frontmostApplication?.processIdentifier
         state.withLock {
-            $0.appsByURL = Dictionary(apps.map { ($0.bundleURL, $0) }, uniquingKeysWith: { first, _ in first })
+            $0.appsByURL = Dictionary(grouping: apps, by: \.bundleURL)
             $0.frontmostPID = frontmost
             $0.activationGeneration += 1
         }
@@ -59,14 +68,20 @@ final class AppDirectory: Sendable {
     @MainActor
     func didLaunch(_ app: NSRunningApplication) {
         guard let record = Self.record(app) else { return }
-        state.withLock { $0.appsByURL[record.bundleURL] = record }
+        state.withLock { state in
+            guard !(state.appsByURL[record.bundleURL] ?? []).contains(record) else { return }
+            state.appsByURL[record.bundleURL, default: []].append(record)
+        }
     }
 
     @MainActor
     func didTerminate(_ app: NSRunningApplication) {
         let pid = app.processIdentifier
         state.withLock { state in
-            state.appsByURL = state.appsByURL.filter { $0.value.pid != pid }
+            state.appsByURL = state.appsByURL.compactMapValues { copies in
+                let remaining = copies.filter { $0.pid != pid }
+                return remaining.isEmpty ? nil : remaining
+            }
             if state.frontmostPID == pid { state.frontmostPID = nil }
         }
     }
