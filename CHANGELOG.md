@@ -2,6 +2,14 @@
 
 All notable changes to Revzen are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-09-25
+
+### Changed
+- The repository has VS Code launch targets for debug and release builds.
+
+### Fixed
+- An app that runs more than once, such as two Chrome instances, gets the right windows on each of its Dock icons. Before, every icon showed the windows of one copy, and click and scroll acted on that copy. Quitting one copy no longer stops Revzen from handling the others.
+
 ## [1.1.0] - 2026-09-24
 
 ### Added
